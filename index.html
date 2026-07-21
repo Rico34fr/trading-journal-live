@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Trading Journal - suivi de portefeuille facon FTMO">
+<meta name="robots" content="noindex">
+<title>Trading Journal</title>
+</head>
+<body>
+<style>
+/* Trading Journal — terminal dark, committed single theme.
+   Un desk de trading est un environnement sombre par convention (TradingView,
+   Tradezella, FTMO). C'est un choix, pas un oubli : pas de thème clair. */
+:root{
+  --bg:#0a0d13; --panel:#111621; --panel2:#161c28; --raise:#1b2230;
+  --line:#232b3a; --line2:#2c3648;
+  --txt:#e8ecf4; --muted:#8c97ab; --dim:#5b667a;
+  --up:#0ecb81; --up-bg:rgba(14,203,129,.12); --up-dim:rgba(14,203,129,.5);
+  --dn:#f6465d; --dn-bg:rgba(246,70,93,.12); --dn-dim:rgba(246,70,93,.5);
+  --acc:#38bdf8; --acc-bg:rgba(56,189,248,.12);
+  --warn:#f0b90b; --violet:#a78bfa;
+  --f-sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --f-mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
+  --r:13px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:var(--f-sans);font-size:14px;
+  -webkit-font-smoothing:antialiased;line-height:1.45}
+.wrap{max-width:1600px;margin:0 auto;padding:0 24px 80px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:6px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* header */
+header{display:flex;align-items:center;gap:14px;padding:22px 0;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font-weight:680;font-size:16px;letter-spacing:-.3px}
+.mark{width:29px;height:29px;border-radius:8px;background:linear-gradient(140deg,var(--up),#0891b2);
+  display:grid;place-items:center;color:#04140d;font-weight:800;font-size:13px}
+.sep{flex:1}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 12px;
+  color:var(--muted);font-size:12.5px;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.pill b{color:var(--txt);font-weight:600}
+select,input{background:var(--panel);border:1px solid var(--line);color:var(--txt);border-radius:9px;
+  padding:7px 10px;font-family:inherit;font-size:12.5px;outline:none;transition:border-color .15s}
+select:hover,input:hover{border-color:var(--line2)}
+.btn{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:9px;
+  padding:7px 12px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap}
+.btn:hover{color:var(--txt);border-color:var(--line2);background:var(--raise)}
+.btn.on{color:var(--acc);border-color:var(--acc);background:var(--acc-bg)}
+
+/* grid */
+.grid{display:grid;gap:13px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(196px,1fr));margin-bottom:13px}
+.c2{grid-template-columns:1fr 372px;align-items:start}
+.c2b{grid-template-columns:372px 1fr;align-items:start}
+.c3{grid-template-columns:repeat(3,1fr)}
+@media(max-width:1080px){.c2,.c2b,.c3{grid-template-columns:1fr}}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
+.card.hi{border-color:var(--line2);background:linear-gradient(180deg,var(--panel2),var(--panel))}
+.ttl{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.ttl h3{font-size:14px;font-weight:640;letter-spacing:-.2px}
+.ttl span{font-size:11.5px;color:var(--dim)}
+.eyebrow{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);
+  font-weight:620;margin-bottom:8px}
+.kv{font-size:25px;font-weight:700;letter-spacing:-.9px;line-height:1.1;font-family:var(--f-mono);
+  font-variant-numeric:tabular-nums}
+.ks{font-size:11.5px;color:var(--dim);margin-top:5px}
+.up{color:var(--up)} .dn{color:var(--dn)} .nt{color:var(--txt)}
+.meter{height:4px;border-radius:99px;background:#1d2431;overflow:hidden;margin-top:10px}
+.meter i{display:block;height:100%;border-radius:99px;transition:width .3s}
+
+svg{display:block;width:100%}
+.tick{fill:var(--dim);font-size:10px;font-family:var(--f-mono)}
+.gl{stroke:#1a2130;stroke-width:1}
+
+/* stats */
+.slist>div{display:flex;justify-content:space-between;align-items:center;padding:9px 0;
+  border-bottom:1px solid #191f2b;font-size:12.5px}
+.slist>div:last-child{border-bottom:0}
+.slist span{color:var(--muted)}
+.slist b{font-weight:600;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* sizing calculator */
+.calc{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin-bottom:15px}
+.fld{display:flex;flex-direction:column;gap:5px}
+.fld label{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600}
+.fld input,.fld select{width:100%;font-family:var(--f-mono)}
+.out{background:var(--raise);border:1px solid var(--line2);border-radius:11px;padding:14px 16px}
+.out .big{font-size:31px;font-weight:750;letter-spacing:-1.2px;font-family:var(--f-mono);color:var(--up)}
+.out .sub{font-size:11.5px;color:var(--muted);margin-top:3px}
+.brk{display:flex;justify-content:space-between;padding:7px 0;font-size:12px;border-top:1px solid var(--line)}
+.brk:first-of-type{border-top:0}
+.brk span{color:var(--muted)} .brk b{font-family:var(--f-mono)}
+
+/* calendar */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;min-width:470px}
+.dow{text-align:center;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;padding-bottom:2px}
+.cell{aspect-ratio:1.3;border-radius:8px;background:var(--panel2);border:1px solid transparent;
+  padding:6px 7px;display:flex;flex-direction:column;justify-content:space-between}
+.cell .d{color:var(--dim);font-size:10px;font-family:var(--f-mono)}
+.cell.w{background:var(--up-bg);border-color:rgba(14,203,129,.28)}
+.cell.l{background:var(--dn-bg);border-color:rgba(246,70,93,.28)}
+.cell .p{font-weight:700;font-size:11.5px;font-family:var(--f-mono)}
+.cell .n{font-size:9px;color:var(--dim)}
+.cell.void{opacity:.22}
+
+/* table */
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);
+  font-weight:620;padding:9px 11px;border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap;
+  user-select:none;transition:color .15s}
+th:hover{color:var(--txt)}
+th.sorted{color:var(--acc)}
+td{padding:11px;border-bottom:1px solid #161c27;font-size:12.5px;white-space:nowrap;font-family:var(--f-mono)}
+td.tx{font-family:var(--f-sans)}
+tbody tr:hover{background:var(--panel2)}
+.chip{display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:660;
+  letter-spacing:.4px;font-family:var(--f-sans)}
+.chip.long{background:rgba(56,189,248,.14);color:#7dd3fc}
+.chip.short{background:rgba(167,139,250,.14);color:#c4b5fd}
+.spark{display:inline-block;width:46px;height:4px;border-radius:99px;background:#1d2431;
+  vertical-align:middle;margin-left:7px;overflow:hidden}
+.spark i{display:block;height:100%}
+
+.drop{border:1.5px dashed var(--line2);border-radius:var(--r);padding:15px;text-align:center;
+  color:var(--dim);font-size:12.5px;margin-top:13px;transition:.15s}
+.drop.hot{border-color:var(--up);color:var(--up);background:var(--up-bg)}
+.note{font-size:11.5px;color:var(--dim);line-height:1.65;margin-top:11px}
+.lg{display:flex;gap:13px;font-size:11px;color:var(--muted);align-items:center;flex-wrap:wrap}
+.lg i{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:5px}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--raise);
+  border:1px solid var(--line2);border-radius:10px;padding:11px 18px;font-size:12.5px;
+  opacity:0;pointer-events:none;transition:opacity .25s;z-index:9}
+.toast.show{opacity:1}
+
+/* en-tête visible uniquement à l'impression / export PDF */
+.printhead{display:none;justify-content:space-between;align-items:baseline;gap:16px;
+  padding-bottom:11px;margin-bottom:14px;border-bottom:1px solid var(--line2)}
+.printhead .pt{font-weight:680;font-size:15px;letter-spacing:-.3px}
+.printhead .pm{color:var(--muted);font-size:11.5px;font-family:var(--f-mono);text-align:right}
+
+/* ─────────────── impression / export PDF ─────────────── */
+@media print{
+  @page{size:A4 landscape;margin:9mm}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  html,body{background:var(--bg)!important}
+  .wrap{max-width:100%!important;padding:0!important}
+  header,.btn,#file,#fSide,.drop,.note{display:none!important}
+  .printhead{display:flex!important}
+  .card,.cell,.grid{break-inside:avoid}
+  .kpis{grid-template-columns:repeat(6,1fr)!important}
+  .c2,.c2b{grid-template-columns:1fr 340px!important}
+  .c3{grid-template-columns:repeat(3,1fr)!important}
+  .cal{min-width:0!important}
+  .scroll{overflow:visible!important}
+  .toast{display:none!important}
+}
+</style>
+
+<div class="wrap">
+
+<div class="printhead">
+  <div class="pt"><span style="color:var(--up)">▲</span> Trading Journal · rapport de performance</div>
+  <div class="pm" id="printMeta"></div>
+</div>
+
+<header>
+  <div class="logo"><span class="mark">▲</span> Trading Journal</div>
+  <div class="pill">Compte <b id="hAcct">·</b></div>
+  <div class="pill">Période <b id="hRange">·</b></div>
+  <div class="sep"></div>
+  <label class="pill">Solde initial
+    <input type="number" id="startBal" value="100000" step="1000"
+      style="width:88px;border:0;background:transparent;padding:0;font-weight:600" aria-label="Solde initial">
+  </label>
+  <select id="fSide" aria-label="Filtre sens">
+    <option value="all">Long + Short</option><option value="Long">Long</option><option value="Short">Short</option>
+  </select>
+  <button class="btn" id="btnAdd">+ Importer CSV</button>
+  <button class="btn" id="btnExp">Sauvegarder</button>
+  <button class="btn" id="btnReset">Réinitialiser</button>
+  <button class="btn" id="btnPdf">⭳ Exporter PDF</button>
+  <input type="file" id="file" accept=".csv" hidden>
+</header>
+
+<div class="grid kpis" id="kpis"></div>
+
+<div class="grid c2b" style="margin-bottom:13px">
+  <div class="card hi">
+    <div class="ttl"><h3>Calculateur de position</h3><span>risque constant</span></div>
+    <div class="calc">
+      <div class="fld"><label for="cInst">Instrument</label>
+        <select id="cInst"><option value="EURUSD">EURUSD</option><option value="XAUUSD">XAUUSD (or)</option></select></div>
+      <div class="fld"><label for="cRisk">Risque par trade</label>
+        <input type="number" id="cRisk" value="1" step="0.1" min="0.1"></div>
+      <div class="fld"><label for="cStop" id="cStopLbl">Stop (pips)</label>
+        <input type="number" id="cStop" value="20" step="0.5" min="0.5"></div>
+      <div class="fld"><label for="cBase">Base de calcul</label>
+        <select id="cBase"><option value="init">Solde initial (fixe)</option><option value="eq">Équity courante</option></select></div>
+    </div>
+    <div class="out">
+      <div class="big" id="cLots">·</div>
+      <div class="sub" id="cNotional">·</div>
+      <div style="margin-top:13px">
+        <div class="brk"><span>Risque engagé</span><b id="cRiskAmt">·</b></div>
+        <div class="brk"><span>Valeur du point</span><b id="cPipVal">·</b></div>
+        <div class="brk"><span>Pertes avant limite journalière</span><b id="cToDaily">·</b></div>
+        <div class="brk"><span>Pertes avant perte maximale</span><b id="cToMax">·</b></div>
+      </div>
+    </div>
+    <div class="note" id="cWarn"></div>
+  </div>
+
+  <div class="card">
+    <div class="ttl"><h3>Courbe d'équity</h3>
+      <div class="lg"><span><i style="background:var(--up)"></i>Équity</span>
+        <span><i style="background:#3a465e"></i>Solde initial</span>
+        <span><i style="background:var(--dn)"></i>Plancher perte max</span></div>
+    </div>
+    <div id="equity"></div>
+  </div>
+</div>
+
+<div class="grid c2" style="margin-bottom:13px">
+  <div class="card">
+    <div class="ttl"><h3>P&L net par jour</h3><span id="dayCount"></span></div>
+    <div id="daily"></div>
+  </div>
+  <div class="card">
+    <div class="ttl"><h3>Objectifs FTMO</h3><span id="ftmoPhase"></span></div>
+    <div id="ftmo"></div>
+  </div>
+</div>
+
+<div class="grid c2" style="margin-bottom:13px">
+  <div class="card">
+    <div class="ttl"><h3>Espérance par tranche de gain brut</h3><span>seuil de rentabilité</span></div>
+    <div id="buckets"></div>
+  </div>
+  <div class="card">
+    <div class="ttl"><h3>Statistiques</h3></div>
+    <div class="slist" id="stats"></div>
+  </div>
+</div>
+
+<div class="grid c3" style="margin-bottom:13px">
+  <div class="card"><div class="ttl"><h3>Répartition</h3><span id="wrLabel"></span></div><div id="donut"></div></div>
+  <div class="card"><div class="ttl"><h3>P&L par trade</h3><span>net</span></div><div id="bars"></div></div>
+  <div class="card"><div class="ttl"><h3>Par session</h3><span>entrée UTC</span></div><div id="sessions"></div></div>
+</div>
+
+<div class="card" style="margin-bottom:13px">
+  <div class="ttl"><h3 id="calTitle">Calendrier</h3>
+    <div class="lg"><span><i style="background:var(--up)"></i>Gagnant</span><span><i style="background:var(--dn)"></i>Perdant</span></div>
+  </div>
+  <div class="scroll"><div class="cal" id="cal"></div></div>
+</div>
+
+<div class="card">
+  <div class="ttl"><h3>Journal des trades</h3><span id="tCount"></span></div>
+  <div class="scroll">
+    <table id="tbl">
+      <thead><tr>
+        <th data-k="idx">#</th><th data-k="open">Entrée</th><th data-k="sym">Instrument</th>
+        <th data-k="dir">Sens</th><th data-k="lots">Taille</th><th data-k="entry">Prix entrée</th>
+        <th data-k="exit">Prix sortie</th><th data-k="pips">Points</th><th data-k="comm">Comm.</th>
+        <th data-k="pnl">P&L net</th><th data-k="ret">% capital</th><th data-k="dur">Durée</th><th data-k="cum">Équity</th>
+      </tr></thead><tbody></tbody>
+    </table>
+  </div>
+  <div class="drop" id="drop">Glissez un export TradingView (order history · filled). Les nouveaux ordres se cumulent aux existants, les doublons sont ignorés.</div>
+  <div class="note">
+    Positions reconstruites en rejouant les ordres par heure d'exécution et en suivant la position nette, un trade étant clos au retour à plat.
+    P&L net = (sortie − entrée) × volume × sens − commissions des deux jambes.
+    Limites FTMO calculées sur le solde initial : perte journalière 5 %, perte maximale 10 % en statique (plancher fixe, sans trailing).
+  </div>
+</div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SEED = `Symbol,Side,Type,Quantity,Limit price,Stop price,Fill price,Commission,Placing time,Closing time,Order ID,Level ID,Leverage,Margin
+FX:EURUSD,Buy,Stop Loss,500000,,1.14155,1.14157,28.5393,2026-07-20 14:55:52,2026-07-20 16:16:20,3307834277,,,
+FX:EURUSD,Sell,Market,500000,,,1.14259,28.5648,2026-07-20 14:55:39,2026-07-20 14:55:39,3307833484,,100:1,"5,712.95 USD"
+FX:EURUSD,Sell,Take Profit,500000,1.14269,,1.14269,28.5673,2026-07-20 14:29:33,2026-07-20 14:54:07,3307735304,,,
+FX:EURUSD,Buy,Market,500000,,,1.14189,28.5473,2026-07-20 14:29:16,2026-07-20 14:29:16,3307734244,,100:1,"5,709.45 USD"
+FX:EURUSD,Sell,Stop,500000,,1.14699,1.14696,28.674,2026-07-15 23:38:47,2026-07-16 09:57:42,3294168899,,,
+FX:EURUSD,Buy,Market,500000,,,1.14681,28.6703,2026-07-15 23:38:22,2026-07-15 23:38:22,3294168499,,100:1,"5,734.05 USD"
+FX:EURUSD,Sell,Limit,500000,1.14344,,1.14352,28.588,2026-07-15 09:25:39,2026-07-15 15:57:46,3291121596,,,
+FX:EURUSD,Buy,Market,500000,,,1.1424,28.56,2026-07-15 09:25:02,2026-07-15 09:25:02,3291120075,,100:1,"5,712.00 USD"
+FX:EURUSD,Buy,Stop,500000,,1.14437,1.14438,28.6095,2026-07-14 14:48:03,2026-07-15 08:26:04,3287829689,,,
+FX:EURUSD,Sell,Market,500000,,,1.14553,28.6383,2026-07-14 14:47:47,2026-07-14 14:47:47,3287827848,,100:1,"5,727.65 USD"
+FX:EURUSD,Sell,Stop,499999,,1.13954,1.13954,28.4884,2026-07-13 02:36:31,2026-07-13 02:43:55,3281659948,x1NsekRu8cB5PBWs,,
+FX:EURUSD,Sell,Limit,1,1.13944,,1.14004,,2026-07-13 02:36:31,2026-07-13 02:36:31,3281659949,EtiBGyy8ruPC4eIe,,
+FX:EURUSD,Buy,Market,500000,,,1.1394900000000001,28.4873,2026-07-13 00:40:34,2026-07-13 00:40:35,3281418095,,100:1,"5,697.45 USD"
+FX:EURUSD,Buy,Stop,500000,,1.14334,1.14334,28.5835,2026-07-10 10:31:41,2026-07-10 10:42:52,3274829089,,,
+FX:EURUSD,Sell,Market,500000,,,1.1435,28.5875,2026-07-10 10:31:34,2026-07-10 10:31:34,3274828831,,100:1,"5,717.50 USD"
+FX:EURUSD,Buy,Market,250000,,,1.14377,14.2971,2026-07-10 10:14:52,2026-07-10 10:14:52,3274788243,,100:1,"2,859.43 USD"
+FX:EURUSD,Sell,Market,250000,,,1.144,14.3,2026-07-10 10:09:55,2026-07-10 10:09:55,3274777929,,100:1,"2,860.00 USD"
+FX:EURUSD,Buy,Stop,250000,,1.14379,1.14379,14.2974,2026-07-10 09:51:28,2026-07-10 09:58:11,3274734966,,,
+FX:EURUSD,Sell,Market,250000,,,1.14407,14.3009,2026-07-10 09:51:14,2026-07-10 09:51:14,3274734409,,100:1,"2,860.18 USD"
+FX:EURUSD,Buy,Stop,250000,,1.14579,1.14582,14.3228,2026-07-10 00:42:12,2026-07-10 04:15:19,3273637019,,,
+FX:EURUSD,Sell,Limit,250000,1.14378,,1.14381,14.2976,2026-07-10 00:42:02,2026-07-10 02:50:11,3273636815,,100:1,"2,859.45 USD"`;
+
+const HEAD='Symbol,Side,Type,Quantity,Limit price,Stop price,Fill price,Commission,Placing time,Closing time,Order ID,Level ID,Leverage,Margin';
+const KEY='tj.orders.v1';
+
+/* ---------- specs instruments ---------- */
+function spec(sym){
+  const s=sym.toUpperCase();
+  if(s.includes('XAU'))return{pip:1,contract:100,unit:'$/oz',lbl:'lots',dec:2,ptName:'$/oz'};
+  if(s.includes('XAG'))return{pip:0.01,contract:5000,unit:'$/oz',lbl:'lots',dec:3,ptName:'cents'};
+  if(s.endsWith('JPY'))return{pip:0.01,contract:100000,unit:'pips',lbl:'lots',dec:3,ptName:'pips'};
+  return{pip:0.0001,contract:100000,unit:'pips',lbl:'lots',dec:5,ptName:'pips'};
+}
+
+/* ---------- csv ---------- */
+function splitLine(l){const o=[];let c='',q=false;
+  for(const ch of l){if(ch==='"')q=!q;else if(ch===','&&!q){o.push(c);c=''}else c+=ch}
+  o.push(c);return o}
+function parseCSV(txt){
+  const ls=txt.trim().split(/\r?\n/),h=splitLine(ls[0]).map(x=>x.trim());
+  return ls.slice(1).filter(l=>l.trim()).map(l=>{const c=splitLine(l),o={};
+    h.forEach((k,i)=>o[k]=(c[i]||'').trim());return o})}
+function toCSV(rows){
+  const h=HEAD.split(',');
+  return HEAD+'\n'+rows.map(r=>h.map(k=>{const v=r[k]||'';
+    return /[",]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(',')).join('\n')}
+
+const num=s=>{const v=parseFloat(String(s).replace(/[,\s]/g,''));return isNaN(v)?0:v};
+const dt=s=>new Date(s.replace(' ','T')+'Z');
+
+/* ---------- store ---------- */
+function load(){
+  try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s)}catch(e){}
+  return parseCSV(SEED)}
+function save(rows){
+  try{localStorage.setItem(KEY,JSON.stringify(rows));return true}catch(e){return false}}
+let ORDERS=load();
+
+function merge(incoming){
+  const seen=new Set(ORDERS.map(r=>r['Order ID']));
+  let added=0;
+  incoming.forEach(r=>{if(r['Order ID']&&!seen.has(r['Order ID'])){ORDERS.push(r);seen.add(r['Order ID']);added++}});
+  return added}
+
+/* ---------- reconstruction des positions ---------- */
+function buildTrades(rows){
+  const orders=rows.filter(r=>r.Symbol&&num(r['Fill price'])>0).map(r=>({
+    sym:r.Symbol.replace(/^[A-Z]+:/,''), dir:r.Side==='Buy'?1:-1, type:r.Type,
+    qty:num(r.Quantity), px:num(r['Fill price']), comm:num(r.Commission),
+    t:dt(r['Closing time']||r['Placing time'])}));
+  orders.sort((a,b)=>a.t-b.t);
+  const trades=[],pos={};
+  for(const o of orders){
+    let q=o.qty,cl=o.comm,p=pos[o.sym];
+    if(p&&p.dir!==o.dir&&q>0){
+      const m=Math.min(q,p.qty),sh=m/o.qty;
+      p.exN+=o.px*m; p.exQ+=m; p.comm+=cl*sh; p.qty-=m; q-=m; cl-=cl*sh; p.closeT=o.t;
+      if(p.qty<=1e-6){
+        const sp=spec(o.sym),entry=p.enN/p.exQ,exit=p.exN/p.exQ,gross=(exit-entry)*p.exQ*p.dir;
+        trades.push({sym:o.sym,dir:p.dir>0?'Long':'Short',qty:p.exQ,lots:p.exQ/sp.contract,
+          entry,exit,open:p.openT,closeT:p.closeT,comm:p.comm,gross,pnl:gross-p.comm,
+          pips:(exit-entry)*p.dir/sp.pip, sp, dur:(p.closeT-p.openT)/6e4, exitType:o.type});
+        delete pos[o.sym]; p=null;
+      }
+    }
+    if(q>1e-6){
+      if(!pos[o.sym])pos[o.sym]={dir:o.dir,qty:0,enN:0,exN:0,exQ:0,comm:0,openT:o.t,closeT:o.t};
+      const P=pos[o.sym]; P.qty+=q; P.enN+=o.px*q; P.comm+=cl;
+    }
+  }
+  return trades.sort((a,b)=>a.open-b.open)}
+
+/* ---------- format ---------- */
+const $=s=>document.querySelector(s);
+const money=v=>(v<0?'-':'')+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const m0=v=>(v<0?'-':'')+'$'+Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:0});
+const sg=v=>(v>=0?'+':'')+money(v);
+const K=v=>v>=0?'up':'dn';
+const durf=m=>m<60?Math.round(m)+'m':m<1440?(m/60).toFixed(1)+'h':(m/1440).toFixed(1)+'j';
+const dk=d=>d.toISOString().slice(0,10);
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2600)}
+
+let ALL=buildTrades(ORDERS),T=[],SORT={k:'open',dir:-1};
+
+/* ---------- métriques ---------- */
+function metrics(t,start){
+  const W=t.filter(x=>x.pnl>0),L=t.filter(x=>x.pnl<=0);
+  const gp=W.reduce((s,x)=>s+x.pnl,0),gl=Math.abs(L.reduce((s,x)=>s+x.pnl,0)),net=gp-gl;
+  let eq=start,peak=start,mdd=0;
+  const curve=[{t:t.length?t[0].open:new Date(),v:start}];
+  t.forEach(x=>{eq+=x.pnl;peak=Math.max(peak,eq);mdd=Math.max(mdd,peak-eq);curve.push({t:x.closeT,v:eq})});
+  const days={};
+  t.forEach(x=>{const k=dk(x.closeT);(days[k]=days[k]||{p:0,n:0});days[k].p+=x.pnl;days[k].n++});
+  let ws=0,ls=0,cw=0,cl=0;
+  t.forEach(x=>{if(x.pnl>0){cw++;cl=0}else{cl++;cw=0}ws=Math.max(ws,cw);ls=Math.max(ls,cl)});
+  const aW=W.length?gp/W.length:0,aL=L.length?gl/L.length:0;
+  return{n:t.length,wins:W.length,losses:L.length,wr:t.length?W.length/t.length*100:0,
+    net,gp,gl,pf:gl?gp/gl:(gp?Infinity:0),avgW:aW,avgL:aL,rr:aL?aW/aL:0,
+    exp:t.length?net/t.length:0,mdd,mddPct:mdd/start*100,eq,curve,days,
+    best:t.length?Math.max(...t.map(x=>x.pnl)):0,worst:t.length?Math.min(...t.map(x=>x.pnl)):0,
+    comm:t.reduce((s,x)=>s+x.comm,0),lots:t.reduce((s,x)=>s+x.lots,0),
+    avgDur:t.length?t.reduce((s,x)=>s+x.dur,0)/t.length:0,ws,ls,ret:net/start*100,
+    be:t.length?1/(1+(aL?aW/aL:0))*100:0}}
+
+/* ---------- charts ---------- */
+function drawEquity(m,start){
+  const W=1000,H=236,P={l:6,r:58,t:14,b:22},pts=m.curve;
+  if(pts.length<2){$('#equity').innerHTML='';return}
+  const floor=start*0.9,vals=pts.map(p=>p.v).concat([start]);
+  let lo=Math.min(...vals),hi=Math.max(...vals);
+  const pad=(hi-lo)*.16||100; lo-=pad; hi+=pad;
+  if(floor>lo-pad*3)lo=Math.min(lo,floor-pad*.3);
+  const X=i=>P.l+i*(W-P.l-P.r)/(pts.length-1),Y=v=>P.t+(hi-v)/(hi-lo)*(H-P.t-P.b);
+  let d='';pts.forEach((p,i)=>d+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(p.v).toFixed(1)+' ');
+  let g='';for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);
+    g+=`<line class="gl" x1="${P.l}" x2="${W-P.r}" y1="${y}" y2="${y}"/><text class="tick" x="${W-P.r+7}" y="${y+3.5}">${m0(v)}</text>`}
+  const u=m.net>=0,c=u?'#0ecb81':'#f6465d',last=pts.length-1;
+  $('#equity').innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="Courbe d'équity">
+    <defs><linearGradient id="eg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="${c}" stop-opacity=".26"/><stop offset="100%" stop-color="${c}" stop-opacity="0"/></linearGradient></defs>
+    ${g}<line x1="${P.l}" x2="${W-P.r}" y1="${Y(start)}" y2="${Y(start)}" stroke="#3a465e" stroke-dasharray="4 4"/>
+    ${floor>lo?`<line x1="${P.l}" x2="${W-P.r}" y1="${Y(floor)}" y2="${Y(floor)}" stroke="#f6465d" stroke-opacity=".45" stroke-dasharray="4 4"/>`:''}
+    <path d="${d}L ${X(last)} ${H-P.b} L ${P.l} ${H-P.b} Z" fill="url(#eg)"/>
+    <path d="${d}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="${X(last)}" cy="${Y(pts[last].v)}" r="4.5" fill="${c}"/>
+    <circle cx="${X(last)}" cy="${Y(pts[last].v)}" r="8" fill="${c}" opacity=".2"/>
+    <text class="tick" x="${P.l}" y="${H-5}">${pts[0].t.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</text>
+    <text class="tick" x="${W-P.r}" y="${H-5}" text-anchor="end">${pts[last].t.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</text></svg>`}
+
+function drawDaily(m){
+  const ks=Object.keys(m.days).sort(),W=1000,H=200,P={l:6,r:56,t:16,b:24};
+  if(!ks.length){$('#daily').innerHTML='';return}
+  const mx=Math.max(...ks.map(k=>Math.abs(m.days[k].p)))*1.3||1;
+  const step=(W-P.l-P.r)/ks.length,bw=Math.min(56,step*.6),Y=v=>P.t+(mx-v)/(2*mx)*(H-P.t-P.b);
+  let g='';for(let i=-2;i<=2;i++){const v=mx*i/2,y=Y(v);
+    g+=`<line class="gl" x1="${P.l}" x2="${W-P.r}" y1="${y}" y2="${y}"/><text class="tick" x="${W-P.r+7}" y="${y+3.5}">${m0(v)}</text>`}
+  const b=ks.map((k,i)=>{const v=m.days[k].p,x=P.l+step*i+(step-bw)/2,y0=Y(0),y=Y(v),
+    top=Math.min(y,y0),h=Math.max(2,Math.abs(y-y0)),c=v>=0?'#0ecb81':'#f6465d';
+    return `<rect x="${x}" y="${top}" width="${bw}" height="${h}" rx="3" fill="${c}" opacity=".92"/>
+    <text class="tick" x="${x+bw/2}" y="${H-7}" text-anchor="middle">${k.slice(8)}/${k.slice(5,7)}</text>
+    <text x="${x+bw/2}" y="${v>=0?top-5:top+h+12}" text-anchor="middle" font-size="10" font-weight="650" fill="${c}" font-family="ui-monospace,monospace">${m0(v)}</text>`}).join('');
+  $('#daily').innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}${b}</svg>`;
+  $('#dayCount').textContent=ks.length+' jours tradés'}
+
+function drawBuckets(t){
+  if(!t.length){$('#buckets').innerHTML='';return}
+  const bands=[{l:'< 2',a:-1e9,b:2},{l:'2 à 5',a:2,b:5},{l:'5 à 10',a:5,b:10},{l:'≥ 10',a:10,b:1e9}];
+  const rows=bands.map(bd=>{const s=t.filter(x=>x.pips>=bd.a&&x.pips<bd.b);
+    return{...bd,n:s.length,net:s.reduce((a,b)=>a+b.pnl,0),
+      esp:s.length?s.reduce((a,b)=>a+b.pnl,0)/s.length:0}});
+  const mx=Math.max(1,...rows.map(r=>Math.abs(r.esp)));
+  $('#buckets').innerHTML=rows.map(r=>`
+    <div style="display:flex;align-items:center;gap:11px;padding:9px 0;font-size:12.5px;border-bottom:1px solid #191f2b">
+      <span style="width:56px;color:var(--muted)" class="num">${r.l}</span>
+      <span style="width:38px;color:var(--dim);font-size:11px" class="num">${r.n} tr</span>
+      <span class="meter" style="flex:1;margin:0;height:6px"><i style="width:${Math.abs(r.esp)/mx*100}%;background:${r.esp>=0?'var(--up)':'var(--dn)'}"></i></span>
+      <b class="num ${K(r.esp)}" style="width:86px;text-align:right">${r.n?sg(r.esp):'·'}</b>
+    </div>`).join('')+
+    `<div class="note" style="margin-top:9px">Espérance nette moyenne par trade, selon le gain brut capté en points. Les tranches basses révèlent le seuil sous lequel la friction absorbe l'edge.</div>`}
+
+function drawDonut(m){
+  const R=58,C=2*Math.PI*R,w=m.wins/(m.n||1);
+  $('#donut').innerHTML=`<svg viewBox="0 0 300 162" style="width:100%;height:auto">
+    <g transform="translate(80,80)">
+      <circle r="${R}" fill="none" stroke="#f6465d" stroke-width="15"/>
+      <circle r="${R}" fill="none" stroke="#0ecb81" stroke-width="15" stroke-dasharray="${(C*w).toFixed(1)} ${C}" transform="rotate(-90)"/>
+      <text y="-1" text-anchor="middle" font-size="25" font-weight="720" fill="#e8ecf4" font-family="ui-monospace,monospace">${m.wr.toFixed(0)}%</text>
+      <text y="17" text-anchor="middle" font-size="10.5" fill="#8c97ab">win rate</text></g>
+    <g transform="translate(172,46)" font-size="12">
+      <rect width="9" height="9" rx="2.5" fill="#0ecb81"/><text x="16" y="9" fill="#e8ecf4">${m.wins} gagnants</text>
+      <text x="16" y="26" fill="#8c97ab" font-size="11" font-family="ui-monospace,monospace">${money(m.gp)}</text>
+      <g transform="translate(0,46)"><rect width="9" height="9" rx="2.5" fill="#f6465d"/><text x="16" y="9" fill="#e8ecf4">${m.losses} perdants</text>
+      <text x="16" y="26" fill="#8c97ab" font-size="11" font-family="ui-monospace,monospace">-${money(m.gl).replace('-','')}</text></g></g></svg>`;
+  $('#wrLabel').textContent=m.n+' trades'}
+
+function drawBars(t){
+  const W=460,H=162,P={t:12,b:18};
+  if(!t.length){$('#bars').innerHTML='';return}
+  const mx=Math.max(...t.map(x=>Math.abs(x.pnl)))*1.15||1;
+  const step=W/t.length,bw=Math.min(24,step*.62),Y=v=>P.t+(mx-v)/(2*mx)*(H-P.t-P.b);
+  $('#bars').innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">
+    <line class="gl" x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2c3648"/>
+    ${t.map((x,i)=>{const y0=Y(0),y=Y(x.pnl),top=Math.min(y,y0),h=Math.max(2,Math.abs(y-y0));
+      return `<rect x="${step*i+(step-bw)/2}" y="${top}" width="${bw}" height="${h}" rx="2.5" fill="${x.pnl>=0?'#0ecb81':'#f6465d'}"><title>#${i+1} ${x.dir} ${sg(x.pnl)}</title></rect>`}).join('')}</svg>`}
+
+function drawSessions(t){
+  const S=[{n:'Asie',a:0,b:7},{n:'Londres',a:7,b:12},{n:'Overlap',a:12,b:16},{n:'US',a:16,b:24}];
+  const rows=S.map(s=>{const x=t.filter(v=>{const h=v.open.getUTCHours();return h>=s.a&&h<s.b});
+    return{...s,c:x.length,p:x.reduce((a,b)=>a+b.pnl,0)}});
+  const mx=Math.max(1,...rows.map(r=>Math.abs(r.p)));
+  $('#sessions').innerHTML=rows.map(r=>`
+    <div style="display:flex;align-items:center;gap:9px;padding:8px 0;font-size:12.5px">
+      <span style="width:60px;color:var(--muted)">${r.n}</span>
+      <span style="width:34px;color:var(--dim);font-size:11px" class="num">${r.c} tr</span>
+      <span class="meter" style="flex:1;margin:0;height:6px"><i style="width:${Math.abs(r.p)/mx*100}%;background:${r.p>=0?'var(--up)':'var(--dn)'}"></i></span>
+      <b class="num ${K(r.p)}" style="width:76px;text-align:right">${r.c?sg(r.p):'·'}</b>
+    </div>`).join('')}
+
+function drawCal(m,t){
+  if(!t.length){$('#cal').innerHTML='';return}
+  const last=t[t.length-1].closeT,y=last.getUTCFullYear(),mo=last.getUTCMonth();
+  const first=new Date(Date.UTC(y,mo,1)),nd=new Date(Date.UTC(y,mo+1,0)).getUTCDate();
+  const off=(first.getUTCDay()+6)%7;
+  let h=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<off;i++)h+='<div class="cell void"></div>';
+  for(let d=1;d<=nd;d++){
+    const k=`${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,day=m.days[k];
+    h+=`<div class="cell ${day?(day.p>=0?'w':'l'):''}"><div class="d">${d}</div>
+      ${day?`<div><div class="p ${K(day.p)}">${m0(day.p)}</div><div class="n">${day.n} trade${day.n>1?'s':''}</div></div>`:''}</div>`}
+  $('#cal').innerHTML=h;
+  $('#calTitle').textContent='Calendrier · '+first.toLocaleDateString('fr-FR',{month:'long',year:'numeric',timeZone:'UTC'})}
+
+/* ---------- calculateur ---------- */
+function calc(m,start){
+  const sp=spec($('#cInst').value),risk=+$('#cRisk').value||1,stop=+$('#cStop').value||1;
+  const base=$('#cBase').value==='eq'?m.eq:start;
+  const perLot=sp.contract*sp.pip;            // $ par point et par lot
+  const amt=base*risk/100, lots=amt/(stop*perLot);
+  const dailyCap=start*0.05, maxCap=start*0.10;
+  const used=Math.max(0,start-m.eq);          // consommé sur la perte max statique
+  $('#cStopLbl').textContent='Stop ('+sp.unit+')';
+  $('#cLots').textContent=lots.toFixed(2)+' lots';
+  $('#cNotional').textContent='soit '+(lots*sp.contract).toLocaleString('fr-FR',{maximumFractionDigits:0})+
+    ($('#cInst').value==='XAUUSD'?' onces':' unités de base');
+  $('#cRiskAmt').textContent=money(amt);
+  $('#cPipVal').textContent=money(lots*perLot)+' / '+sp.ptName.replace('$/oz','$');
+  const nDaily=amt>0?dailyCap/amt:0, nMax=amt>0?(maxCap-used)/amt:0;
+  $('#cToDaily').innerHTML=`<span class="${nDaily>=4?'up':nDaily>=3?'':'dn'}">${nDaily.toFixed(1)}</span>`;
+  $('#cToMax').innerHTML=`<span class="${nMax>=8?'up':nMax>=5?'':'dn'}">${nMax.toFixed(1)}</span>`;
+  const drift=$('#cBase').value==='eq'&&m.eq>start;
+  $('#cWarn').innerHTML = drift
+    ? `L'allocation journalière FTMO reste figée à ${m0(dailyCap)} même quand l'équity progresse. Indexer le risque sur l'équity fait donc <strong>reculer</strong> le nombre de pertes tolérées avant breach, de 5,0 à ${nDaily.toFixed(1)}.`
+    : `Base fixe : le nombre de pertes tolérées avant la limite journalière reste constant quelle que soit la progression du compte.`}
+
+/* ---------- render ---------- */
+function render(){
+  const start=Math.max(1,+$('#startBal').value||100000),f=$('#fSide').value;
+  T=ALL.filter(x=>f==='all'||x.dir===f);
+  const m=metrics(T,start);
+  const period=T.length?T[0].open.toLocaleDateString('fr-FR')+' → '+T[T.length-1].closeT.toLocaleDateString('fr-FR'):'·';
+  const instruments=[...new Set(ALL.map(x=>x.sym))].join(', ')||'·';
+  $('#hRange').textContent=period;
+  $('#hAcct').textContent=instruments;
+  $('#printMeta').innerHTML=`${instruments} · ${period}<br>Solde initial ${m0(start)} · édité le ${new Date().toLocaleDateString('fr-FR')}`;
+
+  const cards=[
+    {t:'P&L net',v:sg(m.net),c:K(m.net),s:`${m.ret>=0?'+':''}${m.ret.toFixed(2)} % · ${money(m.comm)} de commissions`,w:Math.min(100,Math.abs(m.ret)*10),bc:m.net>=0?'var(--up)':'var(--dn)'},
+    {t:'Win rate',v:m.wr.toFixed(1)+' %',c:m.wr>=m.be?'up':'dn',s:`${m.wins} gagnants / ${m.losses} perdants · seuil ${m.be.toFixed(0)} %`,w:m.wr,bc:'var(--up)'},
+    {t:'Profit factor',v:m.pf===Infinity?'∞':m.pf.toFixed(2),c:m.pf>=1.5?'up':m.pf>=1?'nt':'dn',s:`${money(m.gp)} contre ${money(m.gl)}`,w:Math.min(100,m.pf/3*100),bc:'var(--acc)'},
+    {t:'Ratio gain/perte',v:m.rr.toFixed(2)+' R',c:m.rr>=1?'up':'dn',s:`gain moy. ${money(m.avgW)} · perte moy. ${money(m.avgL)}`,w:Math.min(100,m.rr/3*100),bc:'var(--violet)'},
+    {t:'Drawdown max',v:'-'+m.mddPct.toFixed(2)+' %',c:'dn',s:`${money(m.mdd)} depuis le plus haut`,w:Math.min(100,m.mddPct*10),bc:'var(--dn)'},
+    {t:'Espérance',v:sg(m.exp),c:K(m.exp),s:`${m.n} trades · durée moy. ${durf(m.avgDur)}`,w:Math.min(100,Math.abs(m.exp)/300*100),bc:m.exp>=0?'var(--up)':'var(--dn)'},
+  ];
+  $('#kpis').innerHTML=cards.map(c=>`<div class="card"><div class="eyebrow">${c.t}</div>
+    <div class="kv ${c.c}">${c.v}</div><div class="ks">${c.s}</div>
+    <div class="meter"><i style="width:${c.w}%;background:${c.bc}"></i></div></div>`).join('');
+
+  const tgt=start*.10,ddD=start*.05,ddM=start*.10;
+  const worst=Math.min(0,...Object.values(m.days).map(d=>d.p));
+  const rules=[
+    {n:'Objectif de profit (10 %)',c:Math.max(0,m.net),l:tgt,good:1,f:m0},
+    {n:'Pire journée vs limite (5 %)',c:Math.abs(worst),l:ddD,good:0,f:m0},
+    {n:'Drawdown vs perte max (10 %)',c:m.mdd,l:ddM,good:0,f:m0},
+    {n:'Jours de trading (min. 4)',c:Object.keys(m.days).length,l:4,good:1,f:v=>v+' j'}];
+  $('#ftmo').innerHTML=rules.map(r=>{
+    const p=Math.min(100,r.c/r.l*100);
+    const col=r.good?(p>=100?'var(--up)':'var(--acc)'):(p>=80?'var(--dn)':p>=50?'var(--warn)':'var(--up)');
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px">
+        <span style="color:var(--muted)">${r.n}</span>
+        <b class="num">${r.f(r.c)} <span style="color:var(--dim);font-weight:400">/ ${r.f(r.l)}</span></b></div>
+      <div class="meter" style="margin:0;height:6px"><i style="width:${p}%;background:${col}"></i></div></div>`}).join('')+
+    `<div style="border-top:1px solid var(--line);padding-top:12px;display:flex;justify-content:space-between;font-size:12.5px">
+      <span style="color:var(--muted)">Équity</span><b class="num ${K(m.net)}">${money(m.eq)}</b></div>
+     <div style="display:flex;justify-content:space-between;font-size:12.5px;padding-top:8px">
+      <span style="color:var(--muted)">Plancher perte max</span><b class="num" style="color:var(--dn)">${money(start*.9)}</b></div>`;
+  $('#ftmoPhase').textContent=m.net>=tgt?'objectif atteint':`${(m.net/tgt*100).toFixed(0)} % de l'objectif`;
+
+  $('#stats').innerHTML=[
+    ['Trades clôturés',m.n],['Volume cumulé',m.lots.toFixed(1)+' lots'],
+    ['Meilleur trade',`<span class="up">${sg(m.best)}</span>`],
+    ['Pire trade',`<span class="dn">${sg(m.worst)}</span>`],
+    ['Série gagnante max',m.ws],['Série perdante max',m.ls],
+    ['Commissions',`<span class="dn">-${money(m.comm).replace('-','')}</span>`],
+    ['P&L brut',`<span class="${K(m.net+m.comm)}">${sg(m.net+m.comm)}</span>`],
+    ['Durée moyenne',durf(m.avgDur)],
+    ['P&L par jour tradé',`<span class="${K(m.net)}">${sg(m.net/(Object.keys(m.days).length||1))}</span>`],
+  ].map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join('');
+
+  drawEquity(m,start);drawDaily(m);drawBuckets(T);drawDonut(m);drawBars(T);drawSessions(T);drawCal(m,T);
+  calc(m,start);
+  table(start)}
+
+function table(start){
+  let cum=start;const rows=T.map((x,i)=>{cum+=x.pnl;
+    return{...x,idx:i+1,cum,ret:x.pnl/start*100}});
+  rows.sort((a,b)=>{const A=a[SORT.k],B=b[SORT.k];return (A>B?1:A<B?-1:0)*SORT.dir});
+  const mx=Math.max(1,...rows.map(r=>Math.abs(r.pnl)));
+  document.querySelectorAll('#tbl th').forEach(th=>th.classList.toggle('sorted',th.dataset.k===SORT.k));
+  $('#tbl tbody').innerHTML=rows.map(r=>`<tr>
+    <td style="color:var(--dim)">${r.idx}</td>
+    <td>${r.open.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'UTC'})}</td>
+    <td class="tx" style="font-weight:600">${r.sym}</td>
+    <td class="tx"><span class="chip ${r.dir.toLowerCase()}">${r.dir.toUpperCase()}</span></td>
+    <td>${r.lots.toFixed(2)}</td>
+    <td>${r.entry.toFixed(r.sp.dec)}</td>
+    <td>${r.exit.toFixed(r.sp.dec)}</td>
+    <td class="${K(r.pips)}">${r.pips>=0?'+':''}${r.pips.toFixed(1)}</td>
+    <td style="color:var(--dim)">-${r.comm.toFixed(2)}</td>
+    <td class="${K(r.pnl)}" style="font-weight:650">${sg(r.pnl)}<span class="spark"><i style="width:${Math.abs(r.pnl)/mx*100}%;background:${r.pnl>=0?'var(--up)':'var(--dn)'}"></i></span></td>
+    <td class="${K(r.ret)}">${r.ret>=0?'+':''}${r.ret.toFixed(2)} %</td>
+    <td style="color:var(--muted)">${durf(r.dur)}</td>
+    <td>${money(r.cum)}</td></tr>`).join('');
+  $('#tCount').textContent=rows.length+' trades'}
+
+/* ---------- events ---------- */
+document.querySelectorAll('#tbl th').forEach(th=>th.onclick=()=>{
+  const k=th.dataset.k;SORT.dir=SORT.k===k?-SORT.dir:-1;SORT.k=k;table(+$('#startBal').value||100000)});
+['startBal','fSide','cInst','cRisk','cStop','cBase'].forEach(id=>{
+  const el=document.getElementById(id);el.addEventListener('input',render);el.addEventListener('change',render)});
+
+$('#btnPdf').onclick=()=>{
+  toast('Dans la fenêtre d\'impression, choisissez « Enregistrer au format PDF ».');
+  setTimeout(()=>window.print(),400)};
+$('#btnAdd').onclick=()=>$('#file').click();
+$('#file').onchange=e=>ingest(e.target.files[0]);
+const drop=$('#drop');
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('hot')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('hot')}));
+drop.addEventListener('drop',e=>ingest(e.dataTransfer.files[0]));
+
+function ingest(f){
+  if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    let rows;
+    try{rows=parseCSV(r.result)}catch(err){rows=null}
+    if(!rows||!rows.length||!('Fill price' in rows[0])){
+      toast('Format non reconnu. Exportez « order history · filled » depuis TradingView.');return}
+    const added=merge(rows);
+    const t=buildTrades(ORDERS);
+    if(!t.length){toast('Aucune position complète trouvée dans ce fichier.');return}
+    ALL=t;
+    const ok=save(ORDERS);
+    render();
+    toast(added===0?'Aucun nouvel ordre, tout était déjà enregistré.'
+      :`${added} ordre${added>1?'s':''} ajouté${added>1?'s':''}, ${t.length} trades au total.`+(ok?'':' Sauvegarde locale indisponible.'));
+  };
+  r.readAsText(f)}
+
+$('#btnReset').onclick=()=>{
+  ORDERS=parseCSV(SEED);save(ORDERS);ALL=buildTrades(ORDERS);render();
+  toast('Journal réinitialisé sur l\'historique de départ.')};
+
+$('#btnExp').onclick=async()=>{
+  const csv=toCSV(ORDERS),name='trading-journal-'+new Date().toISOString().slice(0,10)+'.csv';
+  if(window.claude?.downloads){
+    try{await window.claude.downloads.save({filename:name,data:csv});toast('Sauvegarde enregistrée.')}
+    catch(e){toast('Sauvegarde annulée.')}
+  }else{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=name;a.click();
+    URL.revokeObjectURL(a.href);toast('Sauvegarde téléchargée.')}};
+
+render();
+</script>
+
+</body>
+</html>

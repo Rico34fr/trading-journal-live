@@ -9,20 +9,53 @@
 </head>
 <body>
 <style>
-/* Trading Journal — terminal dark, committed single theme.
-   Un desk de trading est un environnement sombre par convention (TradingView,
-   Tradezella, FTMO). C'est un choix, pas un oubli : pas de thème clair. */
+/* Trading Journal — identité "terminal d'analyse", deux thèmes.
+   Langage couleur partagé : profit en émeraude-pin (pas le vert néon d'exchange),
+   perte en brique/vermillon, accent iris. Tokens redéfinis par thème ;
+   les graphiques SVG lisent ces tokens à l'exécution pour se recolorer. */
 :root{
-  --bg:#0a0d13; --panel:#111621; --panel2:#161c28; --raise:#1b2230;
-  --line:#232b3a; --line2:#2c3648;
-  --txt:#e8ecf4; --muted:#8c97ab; --dim:#5b667a;
-  --up:#0ecb81; --up-bg:rgba(14,203,129,.12); --up-dim:rgba(14,203,129,.5);
-  --dn:#f6465d; --dn-bg:rgba(246,70,93,.12); --dn-dim:rgba(246,70,93,.5);
-  --acc:#38bdf8; --acc-bg:rgba(56,189,248,.12);
-  --warn:#f0b90b; --violet:#a78bfa;
+  color-scheme:dark;
+  --bg:#0f1117; --panel:#161a23; --panel2:#1b202b; --raise:#232a38;
+  --line:#272e3d; --line2:#354052; --hair:#1e2431; --track:#252d3d; --grid:#232b3b;
+  --txt:#e7eaf1; --muted:#99a2b4; --dim:#646d80;
+  --up:#26c281; --up-rgb:38,194,129; --up-bg:rgba(38,194,129,.13);
+  --dn:#f0584f; --dn-rgb:240,88,79; --dn-bg:rgba(240,88,79,.12);
+  --acc:#7c78f0; --acc-rgb:124,120,240; --acc-bg:rgba(124,120,240,.15);
+  --warn:#e0a53a; --violet:#a78bfa; --dash:#3d4657;
+  --mark-fg:#06130d;
+  --chip-l-bg:rgba(124,120,240,.16); --chip-l-fg:#a9a5f6;
+  --chip-s-bg:rgba(224,165,58,.15);  --chip-s-fg:#e6b968;
   --f-sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   --f-mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
   --r:13px;
+}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f3f5f9; --panel:#ffffff; --panel2:#eceff5; --raise:#e3e8f0;
+  --line:#e1e5ec; --line2:#ccd3de; --hair:#eef1f6; --track:#e6eaf1; --grid:#e8ecf3;
+  --txt:#171b23; --muted:#586274; --dim:#6e7787;
+  --up:#0c7a54; --up-rgb:12,122,84; --up-bg:rgba(12,122,84,.11);
+  --dn:#bd3c2b; --dn-rgb:189,60,43; --dn-bg:rgba(189,60,43,.10);
+  --acc:#4f46c9; --acc-rgb:79,70,201; --acc-bg:rgba(79,70,201,.10);
+  --warn:#a56a12; --violet:#6d5bd0; --dash:#c3ccd9;
+  --mark-fg:#ffffff;
+  --chip-l-bg:rgba(79,70,201,.10); --chip-l-fg:#4f46c9;
+  --chip-s-bg:rgba(165,106,18,.12); --chip-s-fg:#8a5811;
+}
+@media(prefers-color-scheme:light){
+  :root:not([data-theme="dark"]){
+    color-scheme:light;
+    --bg:#f3f5f9; --panel:#ffffff; --panel2:#eceff5; --raise:#e3e8f0;
+    --line:#e1e5ec; --line2:#ccd3de; --hair:#eef1f6; --track:#e6eaf1; --grid:#e8ecf3;
+    --txt:#171b23; --muted:#586274; --dim:#6e7787;
+    --up:#0c7a54; --up-rgb:12,122,84; --up-bg:rgba(12,122,84,.11);
+    --dn:#bd3c2b; --dn-rgb:189,60,43; --dn-bg:rgba(189,60,43,.10);
+    --acc:#4f46c9; --acc-rgb:79,70,201; --acc-bg:rgba(79,70,201,.10);
+    --warn:#a56a12; --violet:#6d5bd0; --dash:#c3ccd9;
+    --mark-fg:#ffffff;
+    --chip-l-bg:rgba(79,70,201,.10); --chip-l-fg:#4f46c9;
+    --chip-s-bg:rgba(165,106,18,.12); --chip-s-fg:#8a5811;
+  }
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--txt);font-family:var(--f-sans);font-size:14px;
@@ -30,13 +63,15 @@ body{background:var(--bg);color:var(--txt);font-family:var(--f-sans);font-size:1
 .wrap{max-width:1600px;margin:0 auto;padding:0 24px 80px}
 .num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:-.2px}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:6px}
+body,.card,.pill,.btn,.dowc,.mini,.wkcell,.out,.seg,.navb,.cell,input,select{
+  transition:background-color .25s ease,border-color .25s ease,color .25s ease}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
 /* header */
 header{display:flex;align-items:center;gap:14px;padding:22px 0;flex-wrap:wrap}
 .logo{display:flex;align-items:center;gap:10px;font-weight:680;font-size:16px;letter-spacing:-.3px}
-.mark{width:29px;height:29px;border-radius:8px;background:linear-gradient(140deg,var(--up),#0891b2);
-  display:grid;place-items:center;color:#04140d;font-weight:800;font-size:13px}
+.mark{width:29px;height:29px;border-radius:8px;background:linear-gradient(140deg,var(--up),var(--acc));
+  display:grid;place-items:center;color:var(--mark-fg);font-weight:800;font-size:13px}
 .sep{flex:1}
 .pill{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 12px;
   color:var(--muted);font-size:12.5px;display:flex;align-items:center;gap:7px;white-space:nowrap}
@@ -101,16 +136,16 @@ select:hover,input:hover{border-color:var(--line2)}
   font-variant-numeric:tabular-nums}
 .ks{font-size:11.5px;color:var(--dim);margin-top:5px}
 .up{color:var(--up)} .dn{color:var(--dn)} .nt{color:var(--txt)}
-.meter{height:4px;border-radius:99px;background:#1d2431;overflow:hidden;margin-top:10px}
+.meter{height:4px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:10px}
 .meter i{display:block;height:100%;border-radius:99px;transition:width .3s}
 
 svg{display:block;width:100%}
 .tick{fill:var(--dim);font-size:10px;font-family:var(--f-mono)}
-.gl{stroke:#1a2130;stroke-width:1}
+.gl{stroke:var(--grid);stroke-width:1}
 
 /* stats */
 .slist>div{display:flex;justify-content:space-between;align-items:center;padding:9px 0;
-  border-bottom:1px solid #191f2b;font-size:12.5px}
+  border-bottom:1px solid var(--hair);font-size:12.5px}
 .slist>div:last-child{border-bottom:0}
 .slist span{color:var(--muted)}
 .slist b{font-weight:600;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
@@ -145,8 +180,8 @@ svg{display:block;width:100%}
 .cell{aspect-ratio:1.35;border-radius:8px;background:var(--panel2);border:1px solid transparent;
   padding:6px;position:relative;display:flex;align-items:center;justify-content:center;text-align:center}
 .cell .d{position:absolute;top:5px;left:8px;color:var(--dim);font-size:10px;font-family:var(--f-mono)}
-.cell.w{background:var(--up-bg);border-color:rgba(14,203,129,.28)}
-.cell.l{background:var(--dn-bg);border-color:rgba(246,70,93,.28)}
+.cell.w{background:var(--up-bg);border-color:rgba(var(--up-rgb),.3)}
+.cell.l{background:var(--dn-bg);border-color:rgba(var(--dn-rgb),.3)}
 .cell .ctr{display:flex;flex-direction:column;align-items:center;gap:2px}
 .cell .p{font-weight:750;font-size:16px;letter-spacing:-.4px;font-family:var(--f-mono)}
 .cell .n{font-size:9.5px;color:var(--dim)}
@@ -163,7 +198,7 @@ svg{display:block;width:100%}
 .minihd b{font-family:var(--f-mono);font-size:11px}
 .minigrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
 .mdow{text-align:center;font-size:7.5px;color:var(--dim);font-family:var(--f-mono);padding-bottom:1px}
-.mc{aspect-ratio:1;border-radius:2px;background:var(--panel)}
+.mc{aspect-ratio:1;border-radius:2px;background:var(--track)}
 .mc.void{background:transparent}
 
 /* table */
@@ -179,9 +214,9 @@ td.tx{font-family:var(--f-sans)}
 tbody tr:hover{background:var(--panel2)}
 .chip{display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:660;
   letter-spacing:.4px;font-family:var(--f-sans)}
-.chip.long{background:rgba(56,189,248,.14);color:#7dd3fc}
-.chip.short{background:rgba(167,139,250,.14);color:#c4b5fd}
-.spark{display:inline-block;width:46px;height:4px;border-radius:99px;background:#1d2431;
+.chip.long{background:var(--chip-l-bg);color:var(--chip-l-fg)}
+.chip.short{background:var(--chip-s-bg);color:var(--chip-s-fg)}
+.spark{display:inline-block;width:46px;height:4px;border-radius:99px;background:var(--track);
   vertical-align:middle;margin-left:7px;overflow:hidden}
 .spark i{display:block;height:100%}
 
@@ -246,6 +281,7 @@ tbody tr:hover{background:var(--panel2)}
   <button class="btn" id="btnExp">Sauvegarder</button>
   <button class="btn" id="btnReset">Réinitialiser</button>
   <button class="btn" id="btnPdf">⭳ Exporter PDF</button>
+  <button class="btn" id="btnTheme" aria-label="Basculer le thème" title="Basculer clair / sombre"></button>
   <input type="file" id="file" accept=".csv" hidden>
 </header>
 
@@ -366,6 +402,18 @@ tbody tr:hover{background:var(--panel2)}
 <div class="toast" id="toast"></div>
 
 <script>
+/* ---------- thème (appliqué avant le premier rendu, sans flash) ---------- */
+const THKEY='tj.theme';
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  const b=document.getElementById('btnTheme');
+  if(b)b.textContent=t==='light'?'☾ Sombre':'☀ Clair';}
+(function(){
+  let t;try{t=localStorage.getItem(THKEY)}catch(e){}
+  if(!t)t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
+  document.documentElement.setAttribute('data-theme',t);
+})();
+
 const SEED = `Symbol,Side,Type,Quantity,Limit price,Stop price,Fill price,Commission,Placing time,Closing time,Order ID,Level ID,Leverage,Margin
 FX:EURUSD,Buy,Stop Loss,500000,,1.14155,1.14157,28.5393,2026-07-20 14:55:52,2026-07-20 16:16:20,3307834277,,,
 FX:EURUSD,Sell,Market,500000,,,1.14259,28.5648,2026-07-20 14:55:39,2026-07-20 14:55:39,3307833484,,100:1,"5,712.95 USD"
@@ -461,6 +509,12 @@ function buildTrades(rows){
 
 /* ---------- format ---------- */
 const $=s=>document.querySelector(s);
+/* couleurs lues depuis les tokens CSS -> graphiques SVG recolorés selon le thème */
+const CSSV=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let CO={};
+function readColors(){CO={up:CSSV('--up'),dn:CSSV('--dn'),acc:CSSV('--acc'),warn:CSSV('--warn'),
+  txt:CSSV('--txt'),muted:CSSV('--muted'),dim:CSSV('--dim'),grid:CSSV('--grid'),
+  line2:CSSV('--line2'),dash:CSSV('--dash'),upRgb:CSSV('--up-rgb'),dnRgb:CSSV('--dn-rgb')}}
 const money=v=>(v<0?'-':'')+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const m0=v=>(v<0?'-':'')+'$'+Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:0});
 const sg=v=>(v>=0?'+':'')+money(v);
@@ -510,14 +564,14 @@ function drawScore(m){
   const ax=scoreMetrics(m),score=Math.round(ax.reduce((s,a)=>s+a.v,0)/ax.length);
   const cx=150,cy=132,R=88,N=6,pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/N;return[cx+Math.cos(a)*r,cy+Math.sin(a)*r]};
   let rings='';[0.25,0.5,0.75,1].forEach(f=>{
-    rings+=`<polygon points="${[...Array(N)].map((_,i)=>pt(i,R*f).map(v=>v.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="#1f2735"/>`});
+    rings+=`<polygon points="${[...Array(N)].map((_,i)=>pt(i,R*f).map(v=>v.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="${CO.grid}"/>`});
   let spk='',lab='';
-  ax.forEach((a,i)=>{const[x,y]=pt(i,R);spk+=`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#1f2735"/>`;
+  ax.forEach((a,i)=>{const[x,y]=pt(i,R);spk+=`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${CO.grid}"/>`;
     const[lx,ly]=pt(i,R+15),an=Math.abs(lx-cx)<6?'middle':(lx>cx?'start':'end');
     lab+=`<text x="${lx.toFixed(1)}" y="${(ly).toFixed(1)}" text-anchor="${an}" style="font-size:9px;fill:var(--muted)">${a.k}</text>
       <text x="${lx.toFixed(1)}" y="${(ly+11).toFixed(1)}" text-anchor="${an}" style="font-size:9px;fill:var(--dim);font-family:var(--f-mono)">${Math.round(a.v)}</text>`});
   const dp=ax.map((a,i)=>pt(i,R*a.v/100).map(v=>v.toFixed(1)).join(',')).join(' ');
-  const col=score>=80?'#0ecb81':score>=60?'#38bdf8':score>=40?'#f0b90b':'#f6465d';
+  const col=score>=80?CO.up:score>=60?CO.acc:score>=40?CO.warn:CO.dn;
   $('#score').innerHTML=`<svg viewBox="0 0 300 232" style="width:100%;height:auto;max-width:330px">
     ${rings}${spk}
     <polygon points="${dp}" fill="${col}" fill-opacity=".2" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>
@@ -560,12 +614,12 @@ function drawEquity(m,start){
   let d='';pts.forEach((p,i)=>d+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(p.v).toFixed(1)+' ');
   let g='';for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);
     g+=`<line class="gl" x1="${P.l}" x2="${W-P.r}" y1="${y}" y2="${y}"/><text class="tick" x="${W-P.r+7}" y="${y+3.5}">${m0(v)}</text>`}
-  const u=m.net>=0,c=u?'#0ecb81':'#f6465d',last=pts.length-1;
+  const u=m.net>=0,c=u?CO.up:CO.dn,last=pts.length-1;
   el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${chh}px" role="img" aria-label="Courbe d'équity">
     <defs><linearGradient id="eg" x1="0" x2="0" y1="0" y2="1">
       <stop offset="0%" stop-color="${c}" stop-opacity=".26"/><stop offset="100%" stop-color="${c}" stop-opacity="0"/></linearGradient></defs>
-    ${g}<line x1="${P.l}" x2="${W-P.r}" y1="${Y(start)}" y2="${Y(start)}" stroke="#3a465e" stroke-dasharray="4 4"/>
-    ${floor>lo?`<line x1="${P.l}" x2="${W-P.r}" y1="${Y(floor)}" y2="${Y(floor)}" stroke="#f6465d" stroke-opacity=".45" stroke-dasharray="4 4"/>`:''}
+    ${g}<line x1="${P.l}" x2="${W-P.r}" y1="${Y(start)}" y2="${Y(start)}" stroke="${CO.dash}" stroke-dasharray="4 4"/>
+    ${floor>lo?`<line x1="${P.l}" x2="${W-P.r}" y1="${Y(floor)}" y2="${Y(floor)}" stroke="${CO.dn}" stroke-opacity=".55" stroke-dasharray="4 4"/>`:''}
     <path d="${d}L ${X(last)} ${H-P.b} L ${P.l} ${H-P.b} Z" fill="url(#eg)"/>
     <path d="${d}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>
     <circle cx="${X(last)}" cy="${Y(pts[last].v)}" r="4.5" fill="${c}"/>
@@ -583,7 +637,7 @@ function drawDaily(m){
   let g='';for(let i=-2;i<=2;i++){const v=mx*i/2,y=Y(v);
     g+=`<line class="gl" x1="${P.l}" x2="${W-P.r}" y1="${y}" y2="${y}"/><text class="tick" x="${W-P.r+7}" y="${y+3.5}">${m0(v)}</text>`}
   const b=ks.map((k,i)=>{const v=m.days[k].p,x=P.l+step*i+(step-bw)/2,y0=Y(0),y=Y(v),
-    top=Math.min(y,y0),h=Math.max(2,Math.abs(y-y0)),c=v>=0?'#0ecb81':'#f6465d';
+    top=Math.min(y,y0),h=Math.max(2,Math.abs(y-y0)),c=v>=0?CO.up:CO.dn;
     return `<rect x="${x}" y="${top}" width="${bw}" height="${h}" rx="3" fill="${c}" opacity=".92"/>
     <text class="tick" x="${x+bw/2}" y="${H-7}" text-anchor="middle">${k.slice(8)}/${k.slice(5,7)}</text>
     <text x="${x+bw/2}" y="${v>=0?top-5:top+h+12}" text-anchor="middle" font-size="10" font-weight="650" fill="${c}" font-family="ui-monospace,monospace">${m0(v)}</text>`}).join('');
@@ -598,7 +652,7 @@ function drawBuckets(t){
       esp:s.length?s.reduce((a,b)=>a+b.pnl,0)/s.length:0}});
   const mx=Math.max(1,...rows.map(r=>Math.abs(r.esp)));
   $('#buckets').innerHTML=rows.map(r=>`
-    <div style="display:flex;align-items:center;gap:11px;padding:9px 0;font-size:12.5px;border-bottom:1px solid #191f2b">
+    <div style="display:flex;align-items:center;gap:11px;padding:9px 0;font-size:12.5px;border-bottom:1px solid var(--hair)">
       <span style="width:56px;color:var(--muted)" class="num">${r.l}</span>
       <span style="width:38px;color:var(--dim);font-size:11px" class="num">${r.n} tr</span>
       <span class="meter" style="flex:1;margin:0;height:6px"><i style="width:${Math.abs(r.esp)/mx*100}%;background:${r.esp>=0?'var(--up)':'var(--dn)'}"></i></span>
@@ -610,15 +664,15 @@ function drawDonut(m){
   const R=58,C=2*Math.PI*R,w=m.wins/(m.n||1);
   $('#donut').innerHTML=`<svg viewBox="0 0 300 162" style="width:100%;height:auto">
     <g transform="translate(80,80)">
-      <circle r="${R}" fill="none" stroke="#f6465d" stroke-width="15"/>
-      <circle r="${R}" fill="none" stroke="#0ecb81" stroke-width="15" stroke-dasharray="${(C*w).toFixed(1)} ${C}" transform="rotate(-90)"/>
-      <text y="-1" text-anchor="middle" font-size="25" font-weight="720" fill="#e8ecf4" font-family="ui-monospace,monospace">${m.wr.toFixed(0)}%</text>
-      <text y="17" text-anchor="middle" font-size="10.5" fill="#8c97ab">win rate</text></g>
+      <circle r="${R}" fill="none" stroke="${CO.dn}" stroke-width="15"/>
+      <circle r="${R}" fill="none" stroke="${CO.up}" stroke-width="15" stroke-dasharray="${(C*w).toFixed(1)} ${C}" transform="rotate(-90)"/>
+      <text y="-1" text-anchor="middle" font-size="25" font-weight="720" fill="${CO.txt}" font-family="ui-monospace,monospace">${m.wr.toFixed(0)}%</text>
+      <text y="17" text-anchor="middle" font-size="10.5" fill="${CO.muted}">win rate</text></g>
     <g transform="translate(172,46)" font-size="12">
-      <rect width="9" height="9" rx="2.5" fill="#0ecb81"/><text x="16" y="9" fill="#e8ecf4">${m.wins} gagnants</text>
-      <text x="16" y="26" fill="#8c97ab" font-size="11" font-family="ui-monospace,monospace">${money(m.gp)}</text>
-      <g transform="translate(0,46)"><rect width="9" height="9" rx="2.5" fill="#f6465d"/><text x="16" y="9" fill="#e8ecf4">${m.losses} perdants</text>
-      <text x="16" y="26" fill="#8c97ab" font-size="11" font-family="ui-monospace,monospace">-${money(m.gl).replace('-','')}</text></g></g></svg>`;
+      <rect width="9" height="9" rx="2.5" fill="${CO.up}"/><text x="16" y="9" fill="${CO.txt}">${m.wins} gagnants</text>
+      <text x="16" y="26" fill="${CO.muted}" font-size="11" font-family="ui-monospace,monospace">${money(m.gp)}</text>
+      <g transform="translate(0,46)"><rect width="9" height="9" rx="2.5" fill="${CO.dn}"/><text x="16" y="9" fill="${CO.txt}">${m.losses} perdants</text>
+      <text x="16" y="26" fill="${CO.muted}" font-size="11" font-family="ui-monospace,monospace">-${money(m.gl).replace('-','')}</text></g></g></svg>`;
   $('#wrLabel').textContent=m.n+' trades'}
 
 function drawBars(t){
@@ -627,9 +681,9 @@ function drawBars(t){
   const mx=Math.max(...t.map(x=>Math.abs(x.pnl)))*1.15||1;
   const step=W/t.length,bw=Math.min(24,step*.62),Y=v=>P.t+(mx-v)/(2*mx)*(H-P.t-P.b);
   $('#bars').innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">
-    <line class="gl" x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2c3648"/>
+    <line class="gl" x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="${CO.line2}"/>
     ${t.map((x,i)=>{const y0=Y(0),y=Y(x.pnl),top=Math.min(y,y0),h=Math.max(2,Math.abs(y-y0));
-      return `<rect x="${step*i+(step-bw)/2}" y="${top}" width="${bw}" height="${h}" rx="2.5" fill="${x.pnl>=0?'#0ecb81':'#f6465d'}"><title>#${i+1} ${x.dir} ${sg(x.pnl)}</title></rect>`}).join('')}</svg>`}
+      return `<rect x="${step*i+(step-bw)/2}" y="${top}" width="${bw}" height="${h}" rx="2.5" fill="${x.pnl>=0?CO.up:CO.dn}"><title>#${i+1} ${x.dir} ${sg(x.pnl)}</title></rect>`}).join('')}</svg>`}
 
 function drawSessions(t){
   const S=[{n:'Asie',a:0,b:7},{n:'Londres',a:7,b:12},{n:'Overlap',a:12,b:16},{n:'US',a:16,b:24}];
@@ -692,7 +746,7 @@ function drawMulti(m,months,mode,cal){
       const day=m.days[dkUTC(y,mo,d)];
       if(day){tot+=day.p;
         const op=(0.28+0.72*Math.min(1,Math.abs(day.p)/mx)).toFixed(2);
-        const col=day.p>=0?`rgba(14,203,129,${op})`:`rgba(246,70,93,${op})`;
+        const col=day.p>=0?`rgba(${CO.upRgb},${op})`:`rgba(${CO.dnRgb},${op})`;
         g+=`<div class="mc" style="background:${col}" title="${dkUTC(y,mo,d)} · ${sg(day.p)} · ${day.n} trade${day.n>1?'s':''}"></div>`;
       }else g+='<div class="mc"></div>';
     }
@@ -733,6 +787,7 @@ function calc(m,start){
 
 /* ---------- render ---------- */
 function render(){
+  readColors();
   const start=Math.max(1,+$('#startBal').value||100000),f=$('#fSide').value;
   T=ALL.filter(x=>f==='all'||x.dir===f);
   const m=metrics(T,start);
@@ -822,6 +877,14 @@ document.querySelectorAll('#tbl th').forEach(th=>th.onclick=()=>{
   const el=document.getElementById(id);el.addEventListener('input',render);el.addEventListener('change',render)});
 
 let _rz;window.addEventListener('resize',()=>{clearTimeout(_rz);_rz=setTimeout(render,150)});
+
+applyTheme(document.documentElement.getAttribute('data-theme'));
+$('#btnTheme').onclick=()=>{
+  const next=document.documentElement.getAttribute('data-theme')==='light'?'dark':'light';
+  try{localStorage.setItem(THKEY,next)}catch(e){}
+  applyTheme(next);
+  render();                       // recolore les graphiques SVG selon le nouveau thème
+  toast(next==='light'?'Thème clair activé.':'Thème sombre activé.')};
 
 $('#calSeg').addEventListener('click',e=>{
   const b=e.target.closest('button[data-mode]');if(!b)return;

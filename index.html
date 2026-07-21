@@ -94,17 +94,44 @@ svg{display:block;width:100%}
 .brk:first-of-type{border-top:0}
 .brk span{color:var(--muted)} .brk b{font-family:var(--f-mono)}
 
-/* calendar */
+/* calendar — contrôles */
+.calbar{display:flex;align-items:center;gap:11px}
+.seg{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:2px}
+.seg button{background:transparent;border:0;color:var(--muted);font-family:inherit;font-size:12px;
+  padding:5px 11px;border-radius:6px;cursor:pointer;transition:.15s}
+.seg button:hover{color:var(--txt)}
+.seg button.on{background:var(--raise);color:var(--txt)}
+.calnav{display:inline-flex;gap:4px}
+.navb{width:27px;height:27px;border-radius:7px;background:var(--panel2);border:1px solid var(--line);
+  color:var(--muted);cursor:pointer;font-size:16px;line-height:1;transition:.15s;font-family:var(--f-mono)}
+.navb:hover{color:var(--txt);border-color:var(--line2)}
+
+/* calendar — vue mois (P&L centré, agrandi) */
 .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;min-width:470px}
 .dow{text-align:center;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;padding-bottom:2px}
-.cell{aspect-ratio:1.3;border-radius:8px;background:var(--panel2);border:1px solid transparent;
-  padding:6px 7px;display:flex;flex-direction:column;justify-content:space-between}
-.cell .d{color:var(--dim);font-size:10px;font-family:var(--f-mono)}
+.cell{aspect-ratio:1.35;border-radius:8px;background:var(--panel2);border:1px solid transparent;
+  padding:6px;position:relative;display:flex;align-items:center;justify-content:center;text-align:center}
+.cell .d{position:absolute;top:5px;left:8px;color:var(--dim);font-size:10px;font-family:var(--f-mono)}
 .cell.w{background:var(--up-bg);border-color:rgba(14,203,129,.28)}
 .cell.l{background:var(--dn-bg);border-color:rgba(246,70,93,.28)}
-.cell .p{font-weight:700;font-size:11.5px;font-family:var(--f-mono)}
-.cell .n{font-size:9px;color:var(--dim)}
+.cell .ctr{display:flex;flex-direction:column;align-items:center;gap:2px}
+.cell .p{font-weight:750;font-size:16px;letter-spacing:-.4px;font-family:var(--f-mono)}
+.cell .n{font-size:9.5px;color:var(--dim)}
 .cell.void{opacity:.22}
+@media(max-width:640px){.cell .p{font-size:12px}}
+
+/* calendar — vues trimestre / année (heatmap mini-mois) */
+.calmulti{display:grid;gap:14px}
+.calmulti.q{grid-template-columns:repeat(3,minmax(150px,1fr));min-width:520px}
+.calmulti.y{grid-template-columns:repeat(4,minmax(128px,1fr));min-width:600px}
+.mini{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 10px}
+.minihd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;font-size:11.5px}
+.minihd span{color:var(--muted);text-transform:capitalize}
+.minihd b{font-family:var(--f-mono);font-size:11px}
+.minigrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.mdow{text-align:center;font-size:7.5px;color:var(--dim);font-family:var(--f-mono);padding-bottom:1px}
+.mc{aspect-ratio:1;border-radius:2px;background:var(--panel)}
+.mc.void{background:transparent}
 
 /* table */
 .scroll{overflow-x:auto}
@@ -154,7 +181,8 @@ tbody tr:hover{background:var(--panel2)}
   .kpis{grid-template-columns:repeat(6,1fr)!important}
   .c2,.c2b{grid-template-columns:1fr 340px!important}
   .c3{grid-template-columns:repeat(3,1fr)!important}
-  .cal{min-width:0!important}
+  .cal,.calmulti{min-width:0!important}
+  .calnav,.seg{display:none!important}
   .scroll{overflow:visible!important}
   .toast{display:none!important}
 }
@@ -253,8 +281,17 @@ tbody tr:hover{background:var(--panel2)}
 </div>
 
 <div class="card" style="margin-bottom:13px">
-  <div class="ttl"><h3 id="calTitle">Calendrier</h3>
-    <div class="lg"><span><i style="background:var(--up)"></i>Gagnant</span><span><i style="background:var(--dn)"></i>Perdant</span></div>
+  <div class="ttl">
+    <div class="calbar">
+      <h3 id="calTitle">Calendrier</h3>
+      <div class="calnav"><button class="navb" id="calPrev" aria-label="Période précédente">‹</button><button class="navb" id="calNext" aria-label="Période suivante">›</button></div>
+    </div>
+    <div class="calbar">
+      <div class="seg" id="calSeg">
+        <button data-mode="month" class="on">Mois</button><button data-mode="quarter">Trimestre</button><button data-mode="year">Année</button>
+      </div>
+      <div class="lg"><span><i style="background:var(--up)"></i>Gagnant</span><span><i style="background:var(--dn)"></i>Perdant</span></div>
+    </div>
   </div>
   <div class="scroll"><div class="cal" id="cal"></div></div>
 </div>
@@ -503,19 +540,62 @@ function drawSessions(t){
       <b class="num ${K(r.p)}" style="width:76px;text-align:right">${r.c?sg(r.p):'·'}</b>
     </div>`).join('')}
 
-function drawCal(m,t){
-  if(!t.length){$('#cal').innerHTML='';return}
-  const last=t[t.length-1].closeT,y=last.getUTCFullYear(),mo=last.getUTCMonth();
-  const first=new Date(Date.UTC(y,mo,1)),nd=new Date(Date.UTC(y,mo+1,0)).getUTCDate();
-  const off=(first.getUTCDay()+6)%7;
+let CAL={mode:'month',anchor:null};   // anchor = 1er du mois de référence (null => dernière période avec données)
+const dkUTC=(y,mo,d)=>`${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+
+function calAnchor(){
+  if(CAL.anchor)return CAL.anchor;
+  const last=ALL.length?ALL[ALL.length-1].closeT:new Date();
+  return new Date(Date.UTC(last.getUTCFullYear(),last.getUTCMonth(),1))}
+
+function drawCal(m){
+  const a=calAnchor(),cal=$('#cal');
+  if(CAL.mode==='month'){drawMonth(m,a,cal);return}
+  const months = CAL.mode==='quarter'
+    ? [0,1,2].map(i=>new Date(Date.UTC(a.getUTCFullYear(),Math.floor(a.getUTCMonth()/3)*3+i,1)))
+    : [...Array(12)].map((_,i)=>new Date(Date.UTC(a.getUTCFullYear(),i,1)));
+  drawMulti(m,months,CAL.mode,cal)}
+
+function drawMonth(m,first,cal){
+  const y=first.getUTCFullYear(),mo=first.getUTCMonth();
+  const nd=new Date(Date.UTC(y,mo+1,0)).getUTCDate(),off=(first.getUTCDay()+6)%7;
   let h=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d=>`<div class="dow">${d}</div>`).join('');
   for(let i=0;i<off;i++)h+='<div class="cell void"></div>';
   for(let d=1;d<=nd;d++){
-    const k=`${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,day=m.days[k];
-    h+=`<div class="cell ${day?(day.p>=0?'w':'l'):''}"><div class="d">${d}</div>
-      ${day?`<div><div class="p ${K(day.p)}">${m0(day.p)}</div><div class="n">${day.n} trade${day.n>1?'s':''}</div></div>`:''}</div>`}
-  $('#cal').innerHTML=h;
+    const day=m.days[dkUTC(y,mo,d)];
+    h+=`<div class="cell ${day?(day.p>=0?'w':'l'):''}"><span class="d">${d}</span>${
+      day?`<div class="ctr"><div class="p ${K(day.p)}">${m0(day.p)}</div><div class="n">${day.n} trade${day.n>1?'s':''}</div></div>`:''}</div>`}
+  cal.className='cal';cal.innerHTML=h;
   $('#calTitle').textContent='Calendrier · '+first.toLocaleDateString('fr-FR',{month:'long',year:'numeric',timeZone:'UTC'})}
+
+function drawMulti(m,months,mode,cal){
+  const mx=Math.max(1,...Object.values(m.days).map(d=>Math.abs(d.p)));
+  const dows=['L','M','M','J','V','S','D'];
+  cal.innerHTML=months.map(first=>{
+    const y=first.getUTCFullYear(),mo=first.getUTCMonth();
+    const nd=new Date(Date.UTC(y,mo+1,0)).getUTCDate(),off=(first.getUTCDay()+6)%7;
+    let tot=0,g=dows.map(d=>`<div class="mdow">${d}</div>`).join('');
+    for(let i=0;i<off;i++)g+='<div class="mc void"></div>';
+    for(let d=1;d<=nd;d++){
+      const day=m.days[dkUTC(y,mo,d)];
+      if(day){tot+=day.p;
+        const op=(0.28+0.72*Math.min(1,Math.abs(day.p)/mx)).toFixed(2);
+        const col=day.p>=0?`rgba(14,203,129,${op})`:`rgba(246,70,93,${op})`;
+        g+=`<div class="mc" style="background:${col}" title="${dkUTC(y,mo,d)} · ${sg(day.p)} · ${day.n} trade${day.n>1?'s':''}"></div>`;
+      }else g+='<div class="mc"></div>';
+    }
+    return `<div class="mini"><div class="minihd"><span>${first.toLocaleDateString('fr-FR',{month:'long',timeZone:'UTC'})}</span>
+      <b class="${tot?K(tot):''}">${tot?m0(tot):'·'}</b></div><div class="minigrid">${g}</div></div>`}).join('');
+  cal.className='calmulti '+(mode==='quarter'?'q':'y');
+  const a=months[0];
+  $('#calTitle').textContent=mode==='quarter'
+    ? `Calendrier · T${Math.floor(a.getUTCMonth()/3)+1} ${a.getUTCFullYear()}`
+    : `Calendrier · ${a.getUTCFullYear()}`}
+
+function shiftCal(dir){
+  const a=calAnchor(),step=CAL.mode==='year'?12:CAL.mode==='quarter'?3:1;
+  CAL.anchor=new Date(Date.UTC(a.getUTCFullYear(),a.getUTCMonth()+dir*step,1));
+  render()}
 
 /* ---------- calculateur ---------- */
 function calc(m,start){
@@ -594,7 +674,7 @@ function render(){
     ['P&L par jour tradé',`<span class="${K(m.net)}">${sg(m.net/(Object.keys(m.days).length||1))}</span>`],
   ].map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join('');
 
-  drawEquity(m,start);drawDaily(m);drawBuckets(T);drawDonut(m);drawBars(T);drawSessions(T);drawCal(m,T);
+  drawEquity(m,start);drawDaily(m);drawBuckets(T);drawDonut(m);drawBars(T);drawSessions(T);drawCal(m);
   calc(m,start);
   table(start)}
 
@@ -625,6 +705,14 @@ document.querySelectorAll('#tbl th').forEach(th=>th.onclick=()=>{
   const k=th.dataset.k;SORT.dir=SORT.k===k?-SORT.dir:-1;SORT.k=k;table(+$('#startBal').value||100000)});
 ['startBal','fSide','cInst','cRisk','cStop','cBase'].forEach(id=>{
   const el=document.getElementById(id);el.addEventListener('input',render);el.addEventListener('change',render)});
+
+$('#calSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-mode]');if(!b)return;
+  CAL.mode=b.dataset.mode;
+  [...$('#calSeg').children].forEach(x=>x.classList.toggle('on',x===b));
+  render()});
+$('#calPrev').onclick=()=>shiftCal(-1);
+$('#calNext').onclick=()=>shiftCal(1);
 
 $('#btnPdf').onclick=()=>{
   toast('Dans la fenêtre d\'impression, choisissez « Enregistrer au format PDF ».');

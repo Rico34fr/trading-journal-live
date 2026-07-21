@@ -20,6 +20,7 @@ fi
   printf '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
   printf '<meta name="description" content="Trading Journal - suivi de portefeuille facon FTMO">\n'
   printf '<meta name="robots" content="noindex">\n'
+  printf '<link rel="icon" type="image/svg+xml" href="favicon.svg">\n'
   printf '<title>Trading Journal</title>\n</head>\n<body>\n'
   cat "$SRC"
   printf '\n</body>\n</html>\n'

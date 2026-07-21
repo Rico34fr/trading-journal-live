@@ -52,12 +52,17 @@ select:hover,input:hover{border-color:var(--line2)}
 /* grid */
 .grid{display:grid;gap:13px}
 .kpis{grid-template-columns:repeat(auto-fit,minmax(196px,1fr));margin-bottom:13px}
-.c2{grid-template-columns:1fr 372px;align-items:start}
-.c2b{grid-template-columns:372px 1fr;align-items:start}
+.c2{grid-template-columns:1fr 372px}
+.c2b{grid-template-columns:372px 1fr}
 .c3{grid-template-columns:repeat(3,1fr)}
 @media(max-width:1080px){.c2,.c2b,.c3{grid-template-columns:1fr}}
 
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;
+  display:flex;flex-direction:column}
+/* remplissage vertical : le module s'étire à la hauteur de son voisin de rangée */
+.fillchart{flex:1;min-height:230px}
+.fillchart>svg{display:block}
+.vfill{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
 .card.hi{border-color:var(--line2);background:linear-gradient(180deg,var(--panel2),var(--panel))}
 .ttl{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
 .ttl h3{font-size:14px;font-weight:640;letter-spacing:-.2px}
@@ -183,6 +188,8 @@ tbody tr:hover{background:var(--panel2)}
   .c3{grid-template-columns:repeat(3,1fr)!important}
   .cal,.calmulti{min-width:0!important}
   .calnav,.seg{display:none!important}
+  .fillchart{min-height:0!important}
+  .fillchart svg{height:auto!important;max-height:280px}
   .scroll{overflow:visible!important}
   .toast{display:none!important}
 }
@@ -248,14 +255,14 @@ tbody tr:hover{background:var(--panel2)}
         <span><i style="background:#3a465e"></i>Solde initial</span>
         <span><i style="background:var(--dn)"></i>Plancher perte max</span></div>
     </div>
-    <div id="equity"></div>
+    <div id="equity" class="fillchart"></div>
   </div>
 </div>
 
 <div class="grid c2" style="margin-bottom:13px">
   <div class="card">
     <div class="ttl"><h3>P&L net par jour</h3><span id="dayCount"></span></div>
-    <div id="daily"></div>
+    <div id="daily" class="fillchart"></div>
   </div>
   <div class="card">
     <div class="ttl"><h3>Objectifs FTMO</h3><span id="ftmoPhase"></span></div>
@@ -266,7 +273,7 @@ tbody tr:hover{background:var(--panel2)}
 <div class="grid c2" style="margin-bottom:13px">
   <div class="card">
     <div class="ttl"><h3>Espérance par tranche de gain brut</h3><span>seuil de rentabilité</span></div>
-    <div id="buckets"></div>
+    <div id="buckets" class="vfill"></div>
   </div>
   <div class="card">
     <div class="ttl"><h3>Statistiques</h3></div>
@@ -275,9 +282,9 @@ tbody tr:hover{background:var(--panel2)}
 </div>
 
 <div class="grid c3" style="margin-bottom:13px">
-  <div class="card"><div class="ttl"><h3>Répartition</h3><span id="wrLabel"></span></div><div id="donut"></div></div>
-  <div class="card"><div class="ttl"><h3>P&L par trade</h3><span>net</span></div><div id="bars"></div></div>
-  <div class="card"><div class="ttl"><h3>Par session</h3><span>entrée UTC</span></div><div id="sessions"></div></div>
+  <div class="card"><div class="ttl"><h3>Répartition</h3><span id="wrLabel"></span></div><div id="donut" class="vfill"></div></div>
+  <div class="card"><div class="ttl"><h3>P&L par trade</h3><span>net</span></div><div id="bars" class="vfill"></div></div>
+  <div class="card"><div class="ttl"><h3>Par session</h3><span>entrée UTC</span></div><div id="sessions" class="vfill"></div></div>
 </div>
 
 <div class="card" style="margin-bottom:13px">
@@ -448,8 +455,10 @@ function metrics(t,start){
 
 /* ---------- charts ---------- */
 function drawEquity(m,start){
-  const W=1000,H=236,P={l:6,r:58,t:14,b:22},pts=m.curve;
-  if(pts.length<2){$('#equity').innerHTML='';return}
+  const el=$('#equity'),pts=m.curve;
+  if(pts.length<2){el.innerHTML='';return}
+  const cw=el.clientWidth||900,chh=Math.max(200,el.clientHeight||236);
+  const W=1000,H=Math.round(1000*chh/cw),P={l:6,r:58,t:14,b:22};
   const floor=start*0.9,vals=pts.map(p=>p.v).concat([start]);
   let lo=Math.min(...vals),hi=Math.max(...vals);
   const pad=(hi-lo)*.16||100; lo-=pad; hi+=pad;
@@ -459,7 +468,7 @@ function drawEquity(m,start){
   let g='';for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);
     g+=`<line class="gl" x1="${P.l}" x2="${W-P.r}" y1="${y}" y2="${y}"/><text class="tick" x="${W-P.r+7}" y="${y+3.5}">${m0(v)}</text>`}
   const u=m.net>=0,c=u?'#0ecb81':'#f6465d',last=pts.length-1;
-  $('#equity').innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="Courbe d'équity">
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${chh}px" role="img" aria-label="Courbe d'équity">
     <defs><linearGradient id="eg" x1="0" x2="0" y1="0" y2="1">
       <stop offset="0%" stop-color="${c}" stop-opacity=".26"/><stop offset="100%" stop-color="${c}" stop-opacity="0"/></linearGradient></defs>
     ${g}<line x1="${P.l}" x2="${W-P.r}" y1="${Y(start)}" y2="${Y(start)}" stroke="#3a465e" stroke-dasharray="4 4"/>
@@ -472,8 +481,10 @@ function drawEquity(m,start){
     <text class="tick" x="${W-P.r}" y="${H-5}" text-anchor="end">${pts[last].t.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</text></svg>`}
 
 function drawDaily(m){
-  const ks=Object.keys(m.days).sort(),W=1000,H=200,P={l:6,r:56,t:16,b:24};
-  if(!ks.length){$('#daily').innerHTML='';return}
+  const el=$('#daily'),ks=Object.keys(m.days).sort();
+  if(!ks.length){el.innerHTML='';$('#dayCount').textContent='';return}
+  const cw=el.clientWidth||900,chh=Math.max(180,el.clientHeight||200);
+  const W=1000,H=Math.round(1000*chh/cw),P={l:6,r:56,t:16,b:24};
   const mx=Math.max(...ks.map(k=>Math.abs(m.days[k].p)))*1.3||1;
   const step=(W-P.l-P.r)/ks.length,bw=Math.min(56,step*.6),Y=v=>P.t+(mx-v)/(2*mx)*(H-P.t-P.b);
   let g='';for(let i=-2;i<=2;i++){const v=mx*i/2,y=Y(v);
@@ -483,7 +494,7 @@ function drawDaily(m){
     return `<rect x="${x}" y="${top}" width="${bw}" height="${h}" rx="3" fill="${c}" opacity=".92"/>
     <text class="tick" x="${x+bw/2}" y="${H-7}" text-anchor="middle">${k.slice(8)}/${k.slice(5,7)}</text>
     <text x="${x+bw/2}" y="${v>=0?top-5:top+h+12}" text-anchor="middle" font-size="10" font-weight="650" fill="${c}" font-family="ui-monospace,monospace">${m0(v)}</text>`}).join('');
-  $('#daily').innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}${b}</svg>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${chh}px">${g}${b}</svg>`;
   $('#dayCount').textContent=ks.length+' jours tradés'}
 
 function drawBuckets(t){
@@ -674,8 +685,10 @@ function render(){
     ['P&L par jour tradé',`<span class="${K(m.net)}">${sg(m.net/(Object.keys(m.days).length||1))}</span>`],
   ].map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join('');
 
-  drawEquity(m,start);drawDaily(m);drawBuckets(T);drawDonut(m);drawBars(T);drawSessions(T);drawCal(m);
+  // calc() d'abord : fige la hauteur du calculateur avant que les graphiques
+  // ne mesurent la hauteur disponible dans leur rangée.
   calc(m,start);
+  drawEquity(m,start);drawDaily(m);drawBuckets(T);drawDonut(m);drawBars(T);drawSessions(T);drawCal(m);
   table(start)}
 
 function table(start){
@@ -705,6 +718,8 @@ document.querySelectorAll('#tbl th').forEach(th=>th.onclick=()=>{
   const k=th.dataset.k;SORT.dir=SORT.k===k?-SORT.dir:-1;SORT.k=k;table(+$('#startBal').value||100000)});
 ['startBal','fSide','cInst','cRisk','cStop','cBase'].forEach(id=>{
   const el=document.getElementById(id);el.addEventListener('input',render);el.addEventListener('change',render)});
+
+let _rz;window.addEventListener('resize',()=>{clearTimeout(_rz);_rz=setTimeout(render,150)});
 
 $('#calSeg').addEventListener('click',e=>{
   const b=e.target.closest('button[data-mode]');if(!b)return;

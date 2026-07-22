@@ -22,7 +22,7 @@
   --up:#26c281; --up-rgb:38,194,129; --up-bg:rgba(38,194,129,.13);
   --dn:#f0584f; --dn-rgb:240,88,79; --dn-bg:rgba(240,88,79,.12);
   --acc:#7c78f0; --acc-rgb:124,120,240; --acc-bg:rgba(124,120,240,.15);
-  --warn:#e0a53a; --violet:#a78bfa; --dash:#3d4657;
+  --warn:#e0a53a; --warn-rgb:224,165,58; --violet:#a78bfa; --dash:#3d4657;
   --mark-fg:#06130d;
   --chip-l-bg:rgba(124,120,240,.16); --chip-l-fg:#a9a5f6;
   --chip-s-bg:rgba(224,165,58,.15);  --chip-s-fg:#e6b968;
@@ -38,7 +38,7 @@
   --up:#0c7a54; --up-rgb:12,122,84; --up-bg:rgba(12,122,84,.11);
   --dn:#bd3c2b; --dn-rgb:189,60,43; --dn-bg:rgba(189,60,43,.10);
   --acc:#4f46c9; --acc-rgb:79,70,201; --acc-bg:rgba(79,70,201,.10);
-  --warn:#a56a12; --violet:#6d5bd0; --dash:#c3ccd9;
+  --warn:#a56a12; --warn-rgb:165,106,18; --violet:#6d5bd0; --dash:#c3ccd9;
   --mark-fg:#ffffff;
   --chip-l-bg:rgba(79,70,201,.10); --chip-l-fg:#4f46c9;
   --chip-s-bg:rgba(165,106,18,.12); --chip-s-fg:#8a5811;
@@ -52,7 +52,7 @@
     --up:#0c7a54; --up-rgb:12,122,84; --up-bg:rgba(12,122,84,.11);
     --dn:#bd3c2b; --dn-rgb:189,60,43; --dn-bg:rgba(189,60,43,.10);
     --acc:#4f46c9; --acc-rgb:79,70,201; --acc-bg:rgba(79,70,201,.10);
-    --warn:#a56a12; --violet:#6d5bd0; --dash:#c3ccd9;
+    --warn:#a56a12; --warn-rgb:165,106,18; --violet:#6d5bd0; --dash:#c3ccd9;
     --mark-fg:#ffffff;
     --chip-l-bg:rgba(79,70,201,.10); --chip-l-fg:#4f46c9;
     --chip-s-bg:rgba(165,106,18,.12); --chip-s-fg:#8a5811;
@@ -91,7 +91,9 @@ select:hover,input:hover{border-color:var(--line2)}
 .c2{grid-template-columns:1fr 372px}
 .c2b{grid-template-columns:372px 1fr}
 .c3{grid-template-columns:repeat(3,1fr)}
-@media(max-width:1080px){.c2,.c2b,.c3{grid-template-columns:1fr}}
+.c3b{grid-template-columns:372px 1fr 1fr}
+@media(max-width:1240px){.c3b{grid-template-columns:372px 1fr}}
+@media(max-width:1080px){.c2,.c2b,.c3,.c3b{grid-template-columns:1fr}}
 
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;
   display:flex;flex-direction:column}
@@ -110,6 +112,16 @@ select:hover,input:hover{border-color:var(--line2)}
 .sgrad{height:6px;border-radius:99px;background:linear-gradient(90deg,var(--dn),var(--warn),var(--up));position:relative}
 .sgrad i{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;background:#fff;
   border:2px solid var(--bg);transform:translate(-50%,-50%);transition:left .3s}
+
+/* analyse de situation (constats generes depuis les metriques) */
+#analysis{flex:1;display:flex;flex-direction:column;gap:8px;justify-content:center}
+.ana{display:flex;gap:9px;align-items:flex-start;padding:9px 11px;border-radius:9px;
+  background:var(--panel2);font-size:12.5px;line-height:1.5}
+.ana .ic{flex:none;font-size:13px;line-height:1.45}
+.ana b{font-weight:660}
+.ana.good{background:var(--up-bg)}
+.ana.warn{background:rgba(var(--warn-rgb),.13)}
+.ana.bad{background:var(--dn-bg)}
 
 /* cartes jour de la semaine */
 #dow{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:11px;align-content:center}
@@ -289,14 +301,18 @@ tbody tr:hover{background:var(--panel2)}
 
 <div class="grid kpis" id="kpis"></div>
 
-<div class="grid c2b" style="margin-bottom:13px">
+<div class="grid c3b" style="margin-bottom:13px">
   <div class="card">
     <div class="ttl"><h3>Score de performance</h3><span id="scoreVal"></span></div>
     <div id="score" class="vfill"></div>
   </div>
   <div class="card">
-    <div class="ttl"><h3>Performance par jour</h3><span>jour de clôture</span></div>
+    <div class="ttl"><h3>Performance par jour</h3><span>clôture</span></div>
     <div id="dow"></div>
+  </div>
+  <div class="card">
+    <div class="ttl"><h3>Analyse de la situation</h3><span id="anaMeta"></span></div>
+    <div id="analysis"></div>
   </div>
 </div>
 
@@ -608,6 +624,61 @@ function drawDow(t){
   $('#dow').innerHTML=cards.map(c=>`<div class="dowc">
     <div class="del ${c.c}">${c.ic} ${c.l}</div><div class="day">${c.day}</div><div class="dsub">${c.s}</div></div>`).join('')}
 
+/* ---------- analyse de situation ----------
+   Constats deterministes calcules sur les metriques reelles, tries par
+   severite (risque d'abord). Aucun texte generique : chaque ligne cite un chiffre. */
+function buildAnalysis(m,t,start){
+  const o=[],pc=v=>v.toFixed(1).replace('.',',');
+  if(!m.n)return[{ic:'📭',tone:'info',t:'Aucun trade sur la période sélectionnée.'}];
+
+  o.push(m.n<30
+    ? {ic:'🔬',tone:'warn',t:`<b>Échantillon de ${m.n} trades</b> : trop court pour valider un edge. Vise 40 à 50 trades avant de tirer des conclusions ou d'ajuster la taille.`}
+    : {ic:'🔬',tone:'good',t:`<b>${m.n} trades</b> : l'échantillon devient statistiquement exploitable.`});
+
+  const tgt=start*.10,prog=m.net/tgt*100;
+  o.push({ic:'🎯',tone:prog>=100?'good':'info',
+    t:`<b>Objectif de profit</b> : ${pc(Math.max(0,prog))} % atteint${prog<100&&prog>=0?`, il reste ${money(tgt-m.net)} à générer`:''}.`});
+
+  o.push(m.rr<1
+    ? {ic:'⚖️',tone:'warn',t:`<b>Ratio gain/perte à ${m.rr.toFixed(2)} R</b> : sous 1, ta rentabilité repose sur le win rate. Point mort à ${m.be.toFixed(0)} %, tu es à ${m.wr.toFixed(0)} %.`}
+    : {ic:'⚖️',tone:'good',t:`<b>Ratio gain/perte à ${m.rr.toFixed(2)} R</b> : asymétrie favorable, un win rate de ${m.be.toFixed(0)} % suffit à être rentable.`});
+
+  o.push(m.mddPct<3
+    ? {ic:'🛡️',tone:'good',t:`<b>Drawdown max à ${pc(m.mddPct)} %</b> : marge confortable avant la limite FTMO de 10 %.`}
+    : m.mddPct<7
+    ? {ic:'🛡️',tone:'warn',t:`<b>Drawdown max à ${pc(m.mddPct)} %</b> : à surveiller, la limite FTMO est à 10 %.`}
+    : {ic:'🚨',tone:'bad',t:`<b>Drawdown max à ${pc(m.mddPct)} %</b> : proche de la limite de 10 %, réduis la taille de position.`});
+
+  const gross=m.net+m.comm,drag=gross>0?m.comm/gross*100:0;
+  if(drag>15)o.push({ic:'💸',tone:'warn',
+    t:`<b>Commissions = ${pc(drag)} % du P&L brut</b> (${money(m.comm)}). Chaque trade doit couvrir cette friction avant de rapporter.`});
+
+  const wd=Object.values(m.days).filter(d=>d.p>0);
+  if(wd.length&&m.net>0){const bd=Math.max(...wd.map(d=>d.p)),sh=bd/m.net*100;
+    if(sh>50)o.push({ic:'📊',tone:'warn',
+      t:`<b>Performance concentrée</b> : ta meilleure journée pèse ${pc(sh)} % du profit net. Sans elle, le résultat change de nature.`})}
+
+  const hrs=groupPnl(t,x=>x.open.getUTCHours(),(a,b)=>b.p-a.p);
+  if(hrs.length>1){const b=hrs[0],w=hrs[hrs.length-1];
+    o.push({ic:'⏰',tone:'info',
+      t:`<b>Créneau le plus rentable : ${b.k}h UTC</b> (${sg(b.p)} sur ${b.n} trade${b.n>1?'s':''}). Le moins bon : ${w.k}h (${sg(w.p)}).`})}
+
+  if(m.ls>=3)o.push({ic:'🔥',tone:'warn',
+    t:`<b>Série de ${m.ls} pertes consécutives</b> : vérifie que ta règle d'arrêt après 3 pertes a bien été respectée.`});
+
+  const nd=Object.keys(m.days).length;
+  if(nd<4)o.push({ic:'📅',tone:'warn',t:`<b>${nd} jour${nd>1?'s':''} de trading</b> : le minimum FTMO est de 4.`});
+
+  const rank={bad:0,warn:1,info:2,good:3};
+  return o.sort((a,b)=>rank[a.tone]-rank[b.tone]).slice(0,7)}
+
+function drawAnalysis(m,t,start){
+  const rows=buildAnalysis(m,t,start);
+  $('#analysis').innerHTML=rows.map(r=>
+    `<div class="ana ${r.tone}"><span class="ic">${r.ic}</span><span>${r.t}</span></div>`).join('');
+  const risks=rows.filter(r=>r.tone==='bad'||r.tone==='warn').length;
+  $('#anaMeta').textContent=risks?`${risks} point${risks>1?'s':''} de vigilance`:'aucune alerte'}
+
 /* ---------- charts ---------- */
 function drawEquity(m,start){
   const el=$('#equity'),pts=m.curve;
@@ -873,7 +944,7 @@ function render(){
   // calc() d'abord : fige la hauteur du calculateur avant que les graphiques
   // ne mesurent la hauteur disponible dans leur rangée.
   calc(m,start);
-  drawScore(m);drawDow(T);
+  drawScore(m);drawDow(T);drawAnalysis(m,T,start);
   drawEquity(m,start);drawDaily(m);drawBuckets(T);drawDonut(m);drawBreakdowns(T);drawCal(m);
   table(start)}
 

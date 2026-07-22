@@ -97,6 +97,7 @@ select:hover,input:hover{border-color:var(--line2)}
   display:flex;flex-direction:column}
 /* remplissage vertical : le module s'étire à la hauteur de son voisin de rangée */
 .fillchart{flex:1;min-height:230px}
+.fillchart.sm{min-height:178px}
 .fillchart>svg{display:block}
 .vfill{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
 
@@ -357,10 +358,16 @@ tbody tr:hover{background:var(--panel2)}
   </div>
 </div>
 
-<div class="grid c3" style="margin-bottom:13px">
+<div class="grid c2b" style="margin-bottom:13px">
   <div class="card"><div class="ttl"><h3>Répartition</h3><span id="wrLabel"></span></div><div id="donut" class="vfill"></div></div>
-  <div class="card"><div class="ttl"><h3>P&L par trade</h3><span>net</span></div><div id="bars" class="vfill"></div></div>
-  <div class="card"><div class="ttl"><h3>Par session</h3><span>entrée UTC</span></div><div id="sessions" class="vfill"></div></div>
+  <div class="card"><div class="ttl"><h3>P&L par heure d'entrée</h3><span>heure UTC · survol pour le détail</span></div>
+    <div id="byHour" class="fillchart"></div></div>
+</div>
+
+<div class="grid c3" style="margin-bottom:13px">
+  <div class="card"><div class="ttl"><h3>Long vs Short</h3><span id="sideLbl"></span></div><div id="bySide" class="fillchart sm"></div></div>
+  <div class="card"><div class="ttl"><h3>Par taille de position</h3><span>lots</span></div><div id="bySize" class="fillchart sm"></div></div>
+  <div class="card"><div class="ttl"><h3>Par instrument</h3><span id="symLbl"></span></div><div id="bySym" class="fillchart sm"></div></div>
 </div>
 
 <div class="card" style="margin-bottom:13px">
@@ -605,8 +612,7 @@ function drawDow(t){
 function drawEquity(m,start){
   const el=$('#equity'),pts=m.curve;
   if(pts.length<2){el.innerHTML='';return}
-  const cw=el.clientWidth||900,chh=Math.max(200,el.clientHeight||236);
-  const W=1000,H=Math.round(1000*chh/cw),P={l:6,r:58,t:14,b:22};
+  const W=el.clientWidth||900,H=Math.max(200,el.clientHeight||236),P={l:6,r:62,t:14,b:22};
   const floor=start*0.9,vals=pts.map(p=>p.v).concat([start]);
   let lo=Math.min(...vals),hi=Math.max(...vals);
   const pad=(hi-lo)*.16||100; lo-=pad; hi+=pad;
@@ -616,7 +622,7 @@ function drawEquity(m,start){
   let g='';for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);
     g+=`<line class="gl" x1="${P.l}" x2="${W-P.r}" y1="${y}" y2="${y}"/><text class="tick" x="${W-P.r+7}" y="${y+3.5}">${m0(v)}</text>`}
   const u=m.net>=0,c=u?CO.up:CO.dn,last=pts.length-1;
-  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${chh}px" role="img" aria-label="Courbe d'équity">
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px" role="img" aria-label="Courbe d'équity">
     <defs><linearGradient id="eg" x1="0" x2="0" y1="0" y2="1">
       <stop offset="0%" stop-color="${c}" stop-opacity=".26"/><stop offset="100%" stop-color="${c}" stop-opacity="0"/></linearGradient></defs>
     ${g}<line x1="${P.l}" x2="${W-P.r}" y1="${Y(start)}" y2="${Y(start)}" stroke="${CO.dash}" stroke-dasharray="4 4"/>
@@ -631,8 +637,7 @@ function drawEquity(m,start){
 function drawDaily(m){
   const el=$('#daily'),ks=Object.keys(m.days).sort();
   if(!ks.length){el.innerHTML='';$('#dayCount').textContent='';return}
-  const cw=el.clientWidth||900,chh=Math.max(180,el.clientHeight||200);
-  const W=1000,H=Math.round(1000*chh/cw),P={l:6,r:56,t:16,b:24};
+  const W=el.clientWidth||900,H=Math.max(180,el.clientHeight||200),P={l:6,r:60,t:16,b:24};
   const mx=Math.max(...ks.map(k=>Math.abs(m.days[k].p)))*1.3||1;
   const step=(W-P.l-P.r)/ks.length,bw=Math.min(56,step*.6),Y=v=>P.t+(mx-v)/(2*mx)*(H-P.t-P.b);
   let g='';for(let i=-2;i<=2;i++){const v=mx*i/2,y=Y(v);
@@ -642,7 +647,7 @@ function drawDaily(m){
     return `<rect x="${x}" y="${top}" width="${bw}" height="${h}" rx="3" fill="${c}" opacity=".92"/>
     <text class="tick" x="${x+bw/2}" y="${H-7}" text-anchor="middle">${k.slice(8)}/${k.slice(5,7)}</text>
     <text x="${x+bw/2}" y="${v>=0?top-5:top+h+12}" text-anchor="middle" font-size="10" font-weight="650" fill="${c}" font-family="ui-monospace,monospace">${m0(v)}</text>`}).join('');
-  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${chh}px">${g}${b}</svg>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px">${g}${b}</svg>`;
   $('#dayCount').textContent=ks.length+' jours tradés'}
 
 function drawBuckets(t){
@@ -676,28 +681,51 @@ function drawDonut(m){
       <text x="16" y="26" fill="${CO.muted}" font-size="11" font-family="ui-monospace,monospace">-${money(m.gl).replace('-','')}</text></g></g></svg>`;
   $('#wrLabel').textContent=m.n+' trades'}
 
-function drawBars(t){
-  const W=460,H=162,P={t:12,b:18};
-  if(!t.length){$('#bars').innerHTML='';return}
-  const mx=Math.max(...t.map(x=>Math.abs(x.pnl)))*1.15||1;
-  const step=W/t.length,bw=Math.min(24,step*.62),Y=v=>P.t+(mx-v)/(2*mx)*(H-P.t-P.b);
-  $('#bars').innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">
-    <line class="gl" x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="${CO.line2}"/>
-    ${t.map((x,i)=>{const y0=Y(0),y=Y(x.pnl),top=Math.min(y,y0),h=Math.max(2,Math.abs(y-y0));
-      return `<rect x="${step*i+(step-bw)/2}" y="${top}" width="${bw}" height="${h}" rx="2.5" fill="${x.pnl>=0?CO.up:CO.dn}"><title>#${i+1} ${x.dir} ${sg(x.pnl)}</title></rect>`}).join('')}</svg>`}
+/* ---------- barres divergentes : P&L agrégé par dimension ----------
+   Moteur générique réutilisé pour l'heure d'entrée, le sens, la taille et
+   l'instrument. rows = [{k:libellé, p:P&L net, n:nb de trades}]. */
+function groupPnl(t,keyFn,sortFn){
+  const g=new Map();
+  t.forEach(x=>{const k=keyFn(x),e=g.get(k)||{k,p:0,n:0};e.p+=x.pnl;e.n++;g.set(k,e)});
+  return [...g.values()].sort(sortFn)}
 
-function drawSessions(t){
-  const S=[{n:'Asie',a:0,b:7},{n:'Londres',a:7,b:12},{n:'Overlap',a:12,b:16},{n:'US',a:16,b:24}];
-  const rows=S.map(s=>{const x=t.filter(v=>{const h=v.open.getUTCHours();return h>=s.a&&h<s.b});
-    return{...s,c:x.length,p:x.reduce((a,b)=>a+b.pnl,0)}});
-  const mx=Math.max(1,...rows.map(r=>Math.abs(r.p)));
-  $('#sessions').innerHTML=rows.map(r=>`
-    <div style="display:flex;align-items:center;gap:9px;padding:8px 0;font-size:12.5px">
-      <span style="width:60px;color:var(--muted)">${r.n}</span>
-      <span style="width:34px;color:var(--dim);font-size:11px" class="num">${r.c} tr</span>
-      <span class="meter" style="flex:1;margin:0;height:6px"><i style="width:${Math.abs(r.p)/mx*100}%;background:${r.p>=0?'var(--up)':'var(--dn)'}"></i></span>
-      <b class="num ${K(r.p)}" style="width:76px;text-align:right">${r.c?sg(r.p):'·'}</b>
-    </div>`).join('')}
+function drawGroups(sel,rows,opt={}){
+  const el=$(sel);
+  if(!rows.length){el.innerHTML=`<div style="color:var(--dim);font-size:12px;text-align:center;padding:24px 0">Aucun trade</div>`;return}
+  // viewBox en pixels réels : l'échelle reste à 1:1, donc les tailles de police
+  // et les marges sont respectées quelle que soit la largeur de la carte.
+  const W=el.clientWidth||420,H=Math.max(150,el.clientHeight||180);
+  const P={l:6,r:58,t:20,b:26};
+  const mx=Math.max(...rows.map(r=>Math.abs(r.p)))*1.3||1;
+  const step=(W-P.l-P.r)/rows.length,bw=Math.min(opt.maxBw||90,step*.6);
+  const Y=v=>P.t+(mx-v)/(2*mx)*(H-P.t-P.b);
+  const every=rows.length>13?2:1;             // évite l'entassement des libellés
+  let g='';for(let i=-2;i<=2;i++){const v=mx*i/2,y=Y(v);
+    g+=`<line class="gl" x1="${P.l}" x2="${W-P.r}" y1="${y}" y2="${y}"/><text class="tick" x="${W-P.r+7}" y="${y+3.5}">${m0(v)}</text>`}
+  const b=rows.map((r,i)=>{
+    const x=P.l+step*i+(step-bw)/2,y0=Y(0),y=Y(r.p),top=Math.min(y,y0),h=Math.max(2,Math.abs(y-y0));
+    const c=r.p>=0?CO.up:CO.dn,lbl=i%every===0?`<text class="tick" x="${x+bw/2}" y="${H-8}" text-anchor="middle">${r.k}</text>`:'';
+    return `<rect x="${x}" y="${top}" width="${bw}" height="${h}" rx="3" fill="${c}" opacity=".92">
+        <title>${r.k} · ${sg(r.p)} · ${r.n} trade${r.n>1?'s':''}</title></rect>
+      <text x="${x+bw/2}" y="${r.p>=0?top-6:top+h+13}" text-anchor="middle" font-size="10" font-weight="650"
+        fill="${c}" font-family="ui-monospace,monospace">${m0(r.p)}</text>${lbl}`}).join('');
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px">${g}${b}</svg>`}
+
+function drawBreakdowns(t){
+  // heure d'entrée : seules les heures effectivement tradées (comme FTMO)
+  drawGroups('#byHour',
+    groupPnl(t,x=>x.open.getUTCHours(),(a,b)=>a.k-b.k).map(r=>({...r,k:r.k+'h'})),{maxBw:64});
+  // sens
+  const sides=groupPnl(t,x=>x.dir,(a,b)=>a.k<b.k?-1:1);
+  drawGroups('#bySide',sides,{maxBw:110});
+  $('#sideLbl').textContent=sides.map(s=>`${s.k} ${s.n}`).join(' · ');
+  // taille de position
+  drawGroups('#bySize',
+    groupPnl(t,x=>x.lots.toFixed(2),(a,b)=>a.k-b.k),{maxBw:90});
+  // instrument
+  const syms=groupPnl(t,x=>x.sym,(a,b)=>Math.abs(b.p)-Math.abs(a.p));
+  drawGroups('#bySym',syms,{maxBw:110});
+  $('#symLbl').textContent=syms.length+(syms.length>1?' instruments':' instrument')}
 
 let CAL={mode:'month',anchor:null};   // anchor = 1er du mois de référence (null => dernière période avec données)
 const dkUTC=(y,mo,d)=>`${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -846,7 +874,7 @@ function render(){
   // ne mesurent la hauteur disponible dans leur rangée.
   calc(m,start);
   drawScore(m);drawDow(T);
-  drawEquity(m,start);drawDaily(m);drawBuckets(T);drawDonut(m);drawBars(T);drawSessions(T);drawCal(m);
+  drawEquity(m,start);drawDaily(m);drawBuckets(T);drawDonut(m);drawBreakdowns(T);drawCal(m);
   table(start)}
 
 function table(start){

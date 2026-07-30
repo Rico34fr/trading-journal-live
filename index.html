@@ -362,9 +362,9 @@ tr.trow.open{background:var(--panel2)}
 
   <div class="card">
     <div class="ttl"><h3>Courbe d'équity</h3>
-      <div class="lg"><span><i style="background:var(--up)"></i>Équity</span>
-        <span><i style="background:#3a465e"></i>Solde initial</span>
-        <span><i style="background:var(--dn)"></i>Plancher perte max</span></div>
+      <div class="lg"><span><i style="background:var(--up)"></i>Au-dessus du capital</span>
+        <span><i style="background:var(--dn)"></i>En dessous</span>
+        <span><i style="background:var(--dash)"></i>Capital initial</span></div>
     </div>
     <div id="equity" class="fillchart"></div>
   </div>
@@ -810,19 +810,31 @@ function drawEquity(m,start){
   const pad=(hi-lo)*.16||100; lo-=pad; hi+=pad;
   if(floor>lo-pad*3)lo=Math.min(lo,floor-pad*.3);
   const X=i=>P.l+i*(W-P.l-P.r)/(pts.length-1),Y=v=>P.t+(hi-v)/(hi-lo)*(H-P.t-P.b);
-  let d='';pts.forEach((p,i)=>d+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(p.v).toFixed(1)+' ');
   let g='';for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);
     g+=`<line class="gl" x1="${P.l}" x2="${W-P.r}" y1="${y}" y2="${y}"/><text class="tick" x="${W-P.r+7}" y="${y+3.5}">${m0(v)}</text>`}
-  const u=m.net>=0,c=u?CO.up:CO.dn,last=pts.length-1;
+  const base=Y(start),last=pts.length-1;
+  // points augmentés d'une intersection exacte à chaque franchissement du capital initial
+  const raw=pts.map((p,i)=>({x:X(i),y:Y(p.v),v:p.v})),aug=[];
+  raw.forEach((p,i)=>{aug.push(p);
+    if(i<raw.length-1){const a=p,b=raw[i+1];
+      if((a.v-start)*(b.v-start)<0){const tt=(start-a.v)/(b.v-a.v);
+        aug.push({x:a.x+(b.x-a.x)*tt,y:base,v:start})}}});
+  // découpage en tronçons au-dessus (vert) / en-dessous (rouge) du capital initial
+  const runs=[];let cur=null;
+  for(let i=0;i<aug.length-1;i++){const a=aug[i],b=aug[i+1];
+    const up=(a.v+b.v)/2>=start,col=up?CO.up:CO.dn;
+    if(!cur||cur.up!==up){cur={up,col,pts:[a,b]};runs.push(cur)}else cur.pts.push(b)}
+  const path=r=>r.pts.map((p,i)=>(i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
+  const areas=runs.map(r=>`<path d="${path(r)} L ${r.pts[r.pts.length-1].x.toFixed(1)} ${base.toFixed(1)} L ${r.pts[0].x.toFixed(1)} ${base.toFixed(1)} Z" fill="${r.col}" fill-opacity=".15"/>`).join('');
+  const lines=runs.map(r=>`<path d="${path(r)}" fill="none" stroke="${r.col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`).join('');
+  const ec=pts[last].v>=start?CO.up:CO.dn;
   el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px" role="img" aria-label="Courbe d'équity">
-    <defs><linearGradient id="eg" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0%" stop-color="${c}" stop-opacity=".26"/><stop offset="100%" stop-color="${c}" stop-opacity="0"/></linearGradient></defs>
-    ${g}<line x1="${P.l}" x2="${W-P.r}" y1="${Y(start)}" y2="${Y(start)}" stroke="${CO.dash}" stroke-dasharray="4 4"/>
+    ${g}${areas}
+    <line x1="${P.l}" x2="${W-P.r}" y1="${base}" y2="${base}" stroke="${CO.dash}" stroke-dasharray="4 4"/>
     ${floor>lo?`<line x1="${P.l}" x2="${W-P.r}" y1="${Y(floor)}" y2="${Y(floor)}" stroke="${CO.dn}" stroke-opacity=".55" stroke-dasharray="4 4"/>`:''}
-    <path d="${d}L ${X(last)} ${H-P.b} L ${P.l} ${H-P.b} Z" fill="url(#eg)"/>
-    <path d="${d}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>
-    <circle cx="${X(last)}" cy="${Y(pts[last].v)}" r="4.5" fill="${c}"/>
-    <circle cx="${X(last)}" cy="${Y(pts[last].v)}" r="8" fill="${c}" opacity=".2"/>
+    ${lines}
+    <circle cx="${X(last)}" cy="${Y(pts[last].v)}" r="4.5" fill="${ec}"/>
+    <circle cx="${X(last)}" cy="${Y(pts[last].v)}" r="8" fill="${ec}" opacity=".2"/>
     <text class="tick" x="${P.l}" y="${H-5}">${pts[0].t.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</text>
     <text class="tick" x="${W-P.r}" y="${H-5}" text-anchor="end">${pts[last].t.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</text></svg>`}
 
